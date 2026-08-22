@@ -39,6 +39,7 @@ constexpr std::string_view kComfortVignetteEnabledKey =
     "comfort_vignette_enabled";
 constexpr std::string_view kDeathCameraComfortEnabledKey =
     "death_camera_comfort_enabled";
+constexpr std::string_view kKeepHudUprightKey = "keep_hud_upright";
 constexpr std::string_view kShowArmsKey = "show_arms";
 constexpr std::string_view kInvertFlightPitchKey = "invert_flight_pitch";
 constexpr std::string_view kAircraftPitchWithRollKey =
@@ -729,6 +730,15 @@ UserSettingsSchema SeededUserSettingsSchema()
             IsBoolean
         },
         {
+            std::string(kKeepHudUprightKey),
+            "true",
+            {
+                "Keeps the ordinary spawned-player HUD level with OpenXR's gravity-aligned application space instead of copying headset roll. Head position, yaw, and pitch still place the HUD normally; native menus, the scoreboard path, BFVR panels, and physical weapon scopes keep their own presentation rules.",
+                "Accepted values: true or false. Applied after VR Settings > Save without a restart. false restores the legacy fully head-locked HUD, including head roll."
+            },
+            IsBoolean
+        },
+        {
             std::string(kShowArmsKey),
             "arms_and_hands",
             {
@@ -1093,6 +1103,7 @@ UserSettingsValues DecodeUserSettings(const UserSettings& settings) noexcept
     result.deathCameraComfortEnabled = readBoolean(
         kDeathCameraComfortEnabledKey,
         true);
+    result.keepHudUpright = readBoolean(kKeepHudUprightKey, true);
     const auto visibility = settings.values.find(std::string(kShowArmsKey));
     if (visibility == settings.values.end() ||
         visibility->second == "arms_and_hands" ||
@@ -1365,6 +1376,8 @@ void EncodeUserSettings(
         values.comfortVignetteEnabled ? "true" : "false";
     settings.values[std::string(kDeathCameraComfortEnabledKey)] =
         values.deathCameraComfortEnabled ? "true" : "false";
+    settings.values[std::string(kKeepHudUprightKey)] =
+        values.keepHudUpright ? "true" : "false";
     const char* firstPersonVisibility = "arms_and_hands";
     if (values.firstPersonVisibility == FirstPersonVisibility::HandsOnly)
     {

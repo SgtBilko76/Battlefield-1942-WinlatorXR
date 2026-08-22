@@ -229,7 +229,8 @@ public:
             OpenXRUiReferenceMode::HeadLocked,
         const OpenXRPresentationPose* worldUiAnchor = nullptr,
         OpenXRUiPresentationMode uiPresentationMode =
-            OpenXRUiPresentationMode::Standard);
+            OpenXRUiPresentationMode::Standard,
+        bool keepHudUpright = true);
 
     // Two-phase form used by the cross-process presenter. BeginFrame waits for
     // runtime timing and locates both predicted eye views before the x86 game
@@ -246,7 +247,8 @@ public:
         OpenXRUiPresentationMode uiPresentationMode =
             OpenXRUiPresentationMode::Standard,
         OpenXRSwapchainContentMode swapchainContentMode =
-            OpenXRSwapchainContentMode::Update);
+            OpenXRSwapchainContentMode::Update,
+        bool keepHudUpright = true);
 
     // Returns and clears one selection produced by releasing the dedicated
     // right-controller A hold. Rendering never dispatches keyboard input.

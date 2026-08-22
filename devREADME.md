@@ -641,7 +641,12 @@ timestamps at the current native eye size:
 
 The matching x64 control executes the native-resolution spatial AO and bilateral
 denoise shaders, verifies non-trivial output, and compares the existing stereo
-world conversion with and without the AO sample:
+world conversion with and without the AO sample. Its synthetic scene includes
+a receding planar floor spanning the former normal-reconstruction cutoff and a
+recessed surface whose valid device depth exceeds 0.9999, plus a clear-depth
+strip. It therefore requires equal near/far floor visibility, non-trivial AO
+past the former loose clear-depth threshold, and one continuous full-world
+ambient baseline through true clear depth:
 
 ```powershell
 .\build\bfvr-presenter-x64\Release\BFVRAmbientOcclusionGpuProbe.exe `
@@ -669,7 +674,9 @@ the horizontal/vertical blur:
 
 Add `--ambient-occlusion` to `BFVRD3D8To9SharedSurfaceProbe` for the complete
 no-game INTZ -> packed D3D9 shared depth -> x64 AO -> world-composite control.
-The ordinary invocation above remains the exact no-AO regression.
+It verifies the exact 0.88 depth-valid ambient attenuation on both world eyes
+and exact unchanged Ref2 UI. The ordinary invocation above remains the exact
+no-AO regression.
 
 Add `--ssgi` for the complete no-game INTZ -> packed D3D9 shared depth -> x64
 native-resolution SSGI -> world-composite control. Its
@@ -691,16 +698,27 @@ failures, invalid frame projections, or x64 AO setup failures retain the
 ordinary D24S8/color/UI path; the established three shared color textures stay
 mandatory. Ref2 UI and bloom are not processed by AO. Use the same build with
 the variable unset for the required headset A/B.
-The current owner-comparison build uses native-eye-resolution R16_FLOAT AO
+The owner-accepted build uses native-eye-resolution R16_FLOAT AO
 intermediates, world-composite intensity 1.0, and a per-pixel-rotated
-eight-sample 0.60 m view-space disk. Projected radii remain exact through 24
-pixels and use a C1-continuous transition over 24..72 pixels into a 48-pixel
-cap. The 3x3 bilateral denoiser uses its original absolute-plus-relative
-view-depth tolerance. The arbitrary view-distance fade is absent; AO fades only
-when its projected footprint becomes subpixel. Native resolution avoids
-stretching a half-resolution result through the ordinary color sampler. The AO
-pass explicitly installs its complete viewport/scissor/blend/depth/raster
-state, and packed-depth transport is unchanged.
+eight-sample 0.60 m view-space disk. Reconstructed-normal derivatives are
+normalized before their cross product, so their validity no longer changes
+with view distance or eye resolution; the result is oriented against the actual
+surface-to-camera vector. The D3D9 depth exporter reserves the highest base-255
+RGB code for source depth 1.0; AO now recognizes that exact sentinel instead of
+treating every decoded depth at or above 0.9999 as clear. Valid distant terrain,
+water, and meshes therefore retain local AO rather than crossing a flat
+camera-distance cutoff. The explicit 0.88 ambient-visibility ceiling is carried
+through true clear depth as a full-world ambient grade, retaining the requested
+darker appearance without exposing a brighter band at fog/depth-coverage
+boundaries; local AO can darken below it. Ref2 UI remains untouched because it
+is composited separately. Projected radii remain exact through 24 pixels and
+use a C1-continuous transition over 24..72 pixels into a 48-pixel cap. The 3x3
+bilateral denoiser uses its original absolute-plus-relative view-depth
+tolerance. The arbitrary view-distance fade is absent; AO fades only when its
+projected footprint becomes subpixel. Native resolution avoids stretching a
+half-resolution result through the ordinary color sampler. The AO pass
+explicitly installs its complete viewport/scissor/blend/depth/raster state, and
+packed-depth transport is unchanged.
 
 Live screen-space global illumination is a rejected experiment and is disabled
 in the current launcher with `BFVR_OPENXR_SSGI=0` and intensity `0.0`. The x86

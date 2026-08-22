@@ -55,6 +55,7 @@ enum class SettingsMenuSelection : std::uint32_t
     ShowPrevious,
     ShowNext,
     DeathCameraComfortEnabled,
+    KeepHudUpright,
     MenuPointerSmoothingEnabled,
     CrosshairColorPrevious,
     CrosshairColorNext,
@@ -139,8 +140,8 @@ constexpr float kSettingsMenuSliderRightPixels = 816.0F;
 constexpr float kSettingsMenuNumberBoxLeftPixels = 832.0F;
 constexpr std::array<float, 4> kSettingsMenuVrPageOneRowCentersPixels = {
     165.0F, 315.0F, 465.0F, 650.0F};
-constexpr std::array<float, 4> kSettingsMenuVrPageTwoRowCentersPixels = {
-    135.0F, 300.0F, 515.0F, 700.0F};
+constexpr std::array<float, 5> kSettingsMenuVrPageTwoRowCentersPixels = {
+    120.0F, 255.0F, 390.0F, 535.0F, 700.0F};
 constexpr std::array<float, 3> kSettingsMenuVrPageThreeRowCentersPixels = {
     180.0F, 370.0F, 610.0F};
 constexpr std::array<float, 6> kSettingsMenuVrPageFourRowCentersPixels = {

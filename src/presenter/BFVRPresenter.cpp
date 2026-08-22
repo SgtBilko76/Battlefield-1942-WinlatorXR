@@ -630,6 +630,7 @@ int RunPresenter(
     ULONGLONG nextComfortSettingsPollAt = 0;
     bool comfortVignetteEnabled = true;
     bool deathCameraComfortEnabled = true;
+    bool keepHudUpright = true;
     bool killSoundEnabled = true;
     auto consumeSequence = [&]()
     {
@@ -704,8 +705,10 @@ int RunPresenter(
             ? bfvr::OpenXRUiPresentationMode::EyeFillingScope
             : bfvr::OpenXRUiPresentationMode::Standard;
         acceptedUiWorldAnchorValid =
-            acceptedUiReferenceMode ==
-                bfvr::OpenXRUiReferenceMode::WorldLocked &&
+            (acceptedUiPresentationMode ==
+                 bfvr::OpenXRUiPresentationMode::EyeFillingScope ||
+             acceptedUiReferenceMode ==
+                 bfvr::OpenXRUiReferenceMode::WorldLocked) &&
             InterlockedCompareExchange(
                 &block->frameUiWorldAnchorValid,
                 0,
@@ -990,6 +993,7 @@ int RunPresenter(
             comfortVignetteEnabled = settings.comfortVignetteEnabled;
             deathCameraComfortEnabled =
                 settings.deathCameraComfortEnabled;
+            keepHudUpright = settings.keepHudUpright;
             killSoundEnabled = settings.killSoundEnabled;
             nextComfortSettingsPollAt = now + 250;
         }
@@ -1172,6 +1176,7 @@ int RunPresenter(
             consumer.GetLocalTextures(),
             rightEye,
             acceptedUiPresentationMode,
+            currentUiWorldAnchor(),
             quickMenuVisible ? &quickMenu : nullptr);
         if (performanceDiagnosticsEnabled)
         {
@@ -1201,7 +1206,8 @@ int RunPresenter(
             acceptedUiPresentationMode,
             updateSwapchainImages
                 ? bfvr::OpenXRSwapchainContentMode::Update
-                : bfvr::OpenXRSwapchainContentMode::ReuseLastReleased);
+                : bfvr::OpenXRSwapchainContentMode::ReuseLastReleased,
+            keepHudUpright);
         if (performanceDiagnosticsEnabled)
         {
             const std::int64_t elapsed =

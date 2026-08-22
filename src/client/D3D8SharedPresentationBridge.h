@@ -97,6 +97,11 @@ struct D3D8RuntimeUiPlacement
     bool headLocked = true;
     bool worldAnchorValid = false;
     D3D8RuntimeView worldAnchor = {};
+    // Exact weapon-minus-head roll emitted by the applied scope camera. The
+    // bridge encodes it into the existing auxiliary UI pose only while the
+    // eye-filling scope flag is active, preserving protocol-v23 layout.
+    bool scopeOverlayRollValid = false;
+    float scopeOverlayRollRadians = 0.0F;
     bool backToGameVisible = false;
     bool backToGameHovered = false;
     bool mountedCameraDecoupled = false;

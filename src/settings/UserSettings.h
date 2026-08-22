@@ -159,6 +159,7 @@ struct UserSettingsValues
         kDefaultStandingEyeHeightCentimeters;
     bool comfortVignetteEnabled = false;
     bool deathCameraComfortEnabled = true;
+    bool keepHudUpright = true;
     FirstPersonVisibility firstPersonVisibility =
         FirstPersonVisibility::ArmsAndHands;
     bool invertFlightPitch = false;

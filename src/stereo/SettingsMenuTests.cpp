@@ -117,7 +117,7 @@ bool TestBounds()
             SettingsMenuTab::VrSettings, false, 3) ==
             SettingsMenuSelection::ResetHandPositions &&
         SettingsMenuSelectionAt(
-            0.57F, 0.132F, true, false,
+            0.57F, 0.117F, true, false,
             SettingsMenuTab::VrSettings, false, 1) ==
             SettingsMenuSelection::ComfortVignetteEnabled &&
         SettingsMenuSelectionAt(
@@ -181,13 +181,17 @@ bool TestBounds()
             SettingsMenuTab::Controls, false, 2) ==
             SettingsMenuSelection::VehicleMotionAimSensitivity &&
         SettingsMenuSelectionAt(
-            0.889F, 0.503F, false, false,
+            0.889F, 0.522F, false, false,
             SettingsMenuTab::VrSettings, false, 1) ==
             SettingsMenuSelection::ShowNext &&
         SettingsMenuSelectionAt(
-            0.57F, 0.293F, false, false,
+            0.57F, 0.249F, false, false,
             SettingsMenuTab::VrSettings, false, 1) ==
             SettingsMenuSelection::DeathCameraComfortEnabled &&
+        SettingsMenuSelectionAt(
+            0.57F, 0.381F, false, false,
+            SettingsMenuTab::VrSettings, false, 1) ==
+            SettingsMenuSelection::KeepHudUpright &&
         SettingsMenuSelectionAt(
             0.57F, 0.684F, false, false,
             SettingsMenuTab::VrSettings, false, 1) ==
@@ -439,7 +443,7 @@ bool TestInteractionAndPlacement()
         return false;
     }
 
-    // Page 2 groups both comfort effects with the live menu-pointer toggle.
+    // Page 2 groups comfort and view-presentation toggles.
     state = interaction.Snapshot();
     AimAt(input, state.panelPose, state.widthMeters, 0.66F, 0.87F);
     Click(interaction, input);
@@ -449,7 +453,7 @@ bool TestInteractionAndPlacement()
         return false;
     }
     const bool originalComfortVignette = state.values.comfortVignetteEnabled;
-    AimAt(input, state.panelPose, state.widthMeters, 0.57F, 0.132F);
+    AimAt(input, state.panelPose, state.widthMeters, 0.57F, 0.117F);
     Click(interaction, input);
     if (interaction.Snapshot().values.comfortVignetteEnabled ==
             originalComfortVignette ||
@@ -458,7 +462,7 @@ bool TestInteractionAndPlacement()
         return false;
     }
     state = interaction.Snapshot();
-    AimAt(input, state.panelPose, state.widthMeters, 0.57F, 0.293F);
+    AimAt(input, state.panelPose, state.widthMeters, 0.57F, 0.249F);
     Click(interaction, input);
     if (interaction.Snapshot().values.deathCameraComfortEnabled ||
         !interaction.TakeValuesChanged())
@@ -466,7 +470,15 @@ bool TestInteractionAndPlacement()
         return false;
     }
     state = interaction.Snapshot();
-    AimAt(input, state.panelPose, state.widthMeters, 0.889F, 0.503F);
+    AimAt(input, state.panelPose, state.widthMeters, 0.57F, 0.381F);
+    Click(interaction, input);
+    if (interaction.Snapshot().values.keepHudUpright ||
+        !interaction.TakeValuesChanged())
+    {
+        return false;
+    }
+    state = interaction.Snapshot();
+    AimAt(input, state.panelPose, state.widthMeters, 0.889F, 0.522F);
     Click(interaction, input);
     if (interaction.Snapshot().values.firstPersonVisibility !=
             bfvr::settings::FirstPersonVisibility::HandsOnly ||

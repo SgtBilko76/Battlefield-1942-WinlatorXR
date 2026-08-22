@@ -147,6 +147,21 @@ bfvr::OpenXRPresentationPose ToPresentationPose(
     return result;
 }
 
+bfvr::stereo::Quaternion Multiply(
+    const bfvr::stereo::Quaternion& left,
+    const bfvr::stereo::Quaternion& right) noexcept
+{
+    return {
+        left.w * right.x + left.x * right.w +
+            left.y * right.z - left.z * right.y,
+        left.w * right.y - left.x * right.z +
+            left.y * right.w + left.z * right.x,
+        left.w * right.z + left.x * right.y -
+            left.y * right.x + left.z * right.w,
+        left.w * right.w - left.x * right.x -
+            left.y * right.y - left.z * right.z};
+}
+
 bool IsSrgbFormat(DXGI_FORMAT format) noexcept
 {
     return format == DXGI_FORMAT_B8G8R8A8_UNORM_SRGB ||
@@ -247,6 +262,7 @@ void DesktopMirror::Render(
     const OpenXRPresentationTextures& textures,
     const OpenXRPresentationView* rightEyeView,
     OpenXRUiPresentationMode uiPresentationMode,
+    const OpenXRPresentationPose* scopeRollInView,
     const OpenXRQuickMenuMirrorState* quickMenu)
 {
     if (!initialized_ || permanentlyDisabled_ || textures.rightWorld == nullptr ||
@@ -324,9 +340,16 @@ void DesktopMirror::Render(
             rightEyeView->fov.angleRight,
             rightEyeView->fov.angleUp,
             rightEyeView->fov.angleDown};
+        bfvr::stereo::Pose scopeEye = ToStereoPose(rightEyeView->pose);
+        if (scopeRollInView != nullptr)
+        {
+            scopeEye.orientation = Multiply(
+                scopeEye.orientation,
+                ToStereoPose(*scopeRollInView).orientation);
+        }
         const auto scopeQuad =
             bfvr::stereo::MakeEyeFillingScopeOverlayQuad(
-                ToStereoPose(rightEyeView->pose),
+                scopeEye,
                 fov);
         const float blendFactor[4] = {};
         context_->OMSetBlendState(
@@ -347,7 +370,7 @@ void DesktopMirror::Render(
         if (scopeDrawn && !firstScopeMirroredLogged_)
         {
             firstScopeMirroredLogged_ = true;
-            WriteLog(L"Desktop mirror composited its first scope Ref2 layer through the physical right-eye pose/FOV, matching the eye-exclusive headset quad instead of texture-centre alignment.");
+            WriteLog(L"Desktop mirror composited its first scope Ref2 layer through the physical right-eye pose/FOV and the same weapon-minus-head roll as the eye-exclusive headset quad.");
         }
         else if (!scopeDrawn && !scopeMirrorFailureReported_)
         {

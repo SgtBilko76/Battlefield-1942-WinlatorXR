@@ -1,6 +1,7 @@
 #include "client/BFSoldierNativeArmIk.h"
 #include "client/BFSoldierNativeArmMath.h"
 #include "client/BFSoldierBoneResolver.h"
+#include "client/BFSoldierAttachmentPosePairer.h"
 #include "client/BFSoldierLeftGripRotationBinding.h"
 #include "client/BFSoldierOffHandSupportBinding.h"
 #include "client/BFSoldierOffHandWeaponSteering.h"
@@ -601,7 +602,6 @@ private:
         {
             return;
         }
-
         auto* const item = static_cast<std::byte*>(
             animatedBundleInterface) - kAnimatedBundleInterfaceOffset;
         LONG activeItemIndex = -1;
@@ -616,6 +616,26 @@ private:
         {
             activeItemIndex = -1;
         }
+        bfvr::BFSoldierAttachmentPoseSample currentSample = {};
+        currentSample.skeleton = pending.skeleton;
+        currentSample.leftHandBone = pending.leftHandBone;
+        if (!SafeCopyMatrix(handWorld, currentSample.rightHandLocal))
+        {
+            InterlockedIncrement(&activeItemAlignmentFailures_);
+            return;
+        }
+        if (pending.leftHandWorld != nullptr && pending.leftHandBone >= 0)
+        {
+            currentSample.leftHandValid = SafeCopyMatrix(
+                pending.leftHandWorld,
+                currentSample.leftHandLocal);
+        }
+        const auto previousSample = attachmentPosePairer_.Advance(
+            soldier,
+            pending.skeleton,
+            animatedBundleInterface,
+            currentSample);
+
         bool shouldCapture = false;
         AcquireSRWLockExclusive(&activeItemAlignmentLock_);
         if (activeItemSoldier_ != soldier ||
@@ -625,7 +645,6 @@ private:
             activeItemInterface_ = animatedBundleInterface;
             activeItem_ = item;
             activeItemIndex_ = activeItemIndex;
-            activeItemNativeWarmupCallbacks_ = 0;
             activeItemAlignmentValid_ = false;
             activeItemHandFromFire_ = {};
             activeItemLeftHandFromRightHand_ = {};
@@ -636,7 +655,7 @@ private:
             if (InterlockedIncrement(&loggedActiveItemChanges_) <= 8)
             {
                 WriteLog(
-                    L"Native 1P arm observed a new game-selected active item: soldier=%p item=%p interface=%p activeItemIndex=%ld. Controller IK is withheld while BF1942 supplies a native attachment sample; no shot is required.",
+                    L"Native 1P arm observed a new game-selected active item: soldier=%p item=%p interface=%p activeItemIndex=%ld. Controller IK is withheld for one deferred native attachment pair; no shot is required.",
                     soldier,
                     item,
                     animatedBundleInterface,
@@ -645,12 +664,7 @@ private:
         }
         else if (!activeItemAlignmentValid_)
         {
-            ++activeItemNativeWarmupCallbacks_;
-            // The first callback after a switch may still carry the prior
-            // item's controller-driven hand. Leave two complete native
-            // attachment updates in place before sampling this item's own
-            // authored hand/fire relationship.
-            shouldCapture = activeItemNativeWarmupCallbacks_ >= 2;
+            shouldCapture = previousSample.has_value();
         }
         ReleaseSRWLockExclusive(&activeItemAlignmentLock_);
         if (!shouldCapture)
@@ -658,12 +672,6 @@ private:
             return;
         }
 
-        Matrix4 nativeHandLocal = {};
-        if (!SafeCopyMatrix(handWorld, nativeHandLocal))
-        {
-            InterlockedIncrement(&activeItemAlignmentFailures_);
-            return;
-        }
         const auto soldierTransform =
             bfvr::ReadBf1942ObjectTransform(soldier);
         if (!soldierTransform.has_value())
@@ -671,6 +679,7 @@ private:
             InterlockedIncrement(&activeItemAlignmentFailures_);
             return;
         }
+        const Matrix4 nativeHandLocal = previousSample->rightHandLocal;
         const Matrix4 nativeHandWorld = Multiply(
             nativeHandLocal,
             *soldierTransform);
@@ -691,19 +700,16 @@ private:
             return;
         }
 
-        Matrix4 nativeLeftHandLocal = {};
+        Matrix4 nativeLeftHandLocal = previousSample->leftHandLocal;
         Matrix4 leftHandFromRightHand = {};
         bool hasLeftSupportPose = false;
         Matrix4 nativeLeftHandWorld = {};
-        if (pending.leftHandWorld != nullptr &&
-            pending.leftHandBone >= 0)
+        if (previousSample->leftHandValid &&
+            previousSample->leftHandBone >= 0)
         {
             const auto inverseNativeHandWorld =
                 Invert(nativeHandWorld);
-            if (SafeCopyMatrix(
-                    pending.leftHandWorld,
-                    nativeLeftHandLocal) &&
-                inverseNativeHandWorld.has_value())
+            if (inverseNativeHandWorld.has_value())
             {
                 nativeLeftHandWorld = Multiply(
                     nativeLeftHandLocal,
@@ -736,7 +742,8 @@ private:
             {
                 activeItemLeftHandFromRightHand_ = leftHandFromRightHand;
                 activeItemNativeLeftHandLocal_ = nativeLeftHandLocal;
-                activeItemLeftHandBone_ = pending.leftHandBone;
+                activeItemLeftHandBone_ =
+                    static_cast<LONG>(previousSample->leftHandBone);
                 activeItemLeftSupportPoseValid_ = true;
             }
             published = true;
@@ -766,11 +773,11 @@ private:
                      nativeLeftHandWorld.values[3][2]}));
                 InterlockedIncrement(&leftSupportCaptures_);
                 WriteLog(
-                    L"Native 1P off-hand probe captured the same-update native left-to-right-hand relation without applying it: soldier=%p item=%p activeItemIndex=%ld leftBone=%ld nativeLeft=(%.4f,%.4f,%.4f) handSpan=%.4f. Primary-slot visual support may preserve this relation; close sidearms use a user-captured cup because BF1942's native left pose is not assumed to be a grip.",
+                    L"Native 1P off-hand probe captured the matched attachment-update native left-to-right-hand relation without applying it: soldier=%p item=%p activeItemIndex=%ld leftBone=%ld nativeLeft=(%.4f,%.4f,%.4f) handSpan=%.4f. Primary-slot visual support may preserve this relation; close sidearms use a user-captured cup because BF1942's native left pose is not assumed to be a grip.",
                     soldier,
                     item,
                     activeItemIndex,
-                    pending.leftHandBone,
+                    static_cast<LONG>(previousSample->leftHandBone),
                     nativeLeftHandWorld.values[3][0],
                     nativeLeftHandWorld.values[3][1],
                     nativeLeftHandWorld.values[3][2],
@@ -2099,10 +2106,10 @@ private:
         activeItemLeftHandFromRightHand_ = {};
         activeItemNativeLeftHandLocal_ = {};
         activeItemLeftHandBone_ = -1;
-        activeItemNativeWarmupCallbacks_ = 0;
         activeItemAlignmentValid_ = false;
         activeItemLeftSupportPoseValid_ = false;
         ReleaseSRWLockExclusive(&activeItemAlignmentLock_);
+        attachmentPosePairer_.Reset();
     }
 
     void Restore(const ArmIkRestore& restore) noexcept
@@ -2445,7 +2452,6 @@ private:
     const void* activeItemInterface_ = nullptr;
     const void* activeItem_ = nullptr;
     LONG activeItemIndex_ = -1;
-    LONG activeItemNativeWarmupCallbacks_ = 0;
     LONG activeItemLeftHandBone_ = -1;
     bool activeItemAlignmentValid_ = false;
     bool activeItemLeftSupportPoseValid_ = false;
@@ -2475,6 +2481,7 @@ private:
     bfvr::BFSoldierPrimarySupportPoseCache primarySupportPoseCache_ = {};
     bfvr::BFSoldierOffHandCalibration offHandCalibration_ = {};
     bfvr::BFSoldierOffHandSupportBinding offHandSupportBinding_ = {};
+    bfvr::BFSoldierAttachmentPosePairer attachmentPosePairer_ = {};
     std::uint64_t loggedPrimarySteeringBindingId_ = 0;
     void* loggedFreeLeftSoldier_ = nullptr;
     void* loggedFreeLeftSkeleton_ = nullptr;

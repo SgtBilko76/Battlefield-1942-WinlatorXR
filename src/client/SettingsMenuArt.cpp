@@ -939,9 +939,15 @@ bool SettingsMenuArt::ComposeSettingsBody(
                     L"Death Camera Comfort",
                     state.values.deathCameraComfortEnabled,
                     L"Uses a strong muted dark-red vignette during the death-camera flight.") &&
-                drawSelectorAt(
+                drawToggleAt(
                     static_cast<int>(
                         stereo::kSettingsMenuVrPageTwoRowCentersPixels[2]),
+                    L"Keep HUD Upright",
+                    state.values.keepHudUpright,
+                    L"Keeps the spawned-player HUD level when you tilt your head.") &&
+                drawSelectorAt(
+                    static_cast<int>(
+                        stereo::kSettingsMenuVrPageTwoRowCentersPixels[3]),
                     L"Show",
                     firstPersonVisibilityName(
                         state.values.firstPersonVisibility),
@@ -949,7 +955,7 @@ bool SettingsMenuArt::ComposeSettingsBody(
                     stereo::SettingsMenuSelection::ShowNext) &&
                 drawToggleAt(
                     static_cast<int>(
-                        stereo::kSettingsMenuVrPageTwoRowCentersPixels[3]),
+                        stereo::kSettingsMenuVrPageTwoRowCentersPixels[4]),
                     L"Menu Pointer Smoothing",
                     state.values.menuPointerSmoothingEnabled,
                     L"Stabilizes controller-pointer tremor in all Battlefield and BFVR menus.");

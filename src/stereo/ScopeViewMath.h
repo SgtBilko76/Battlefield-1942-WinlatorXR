@@ -29,6 +29,15 @@ struct ScopeOverlayQuad
     float heightMeters = 0.0F;
 };
 
+struct IndependentScopeRollCamera
+{
+    Matrix4 cameraWorld = {};
+    // Roll that the weapon-owned mask/reticle must apply relative to VIEW.
+    // The world camera already contains the head's roll, so this is exactly
+    // weapon roll minus head roll, wrapped to the shortest signed angle.
+    float overlayRollRadians = 0.0F;
+};
+
 inline constexpr float kEyeFillingScopeOverlayDistanceMeters = 1.0F;
 
 enum class ScopeAimSource
@@ -184,11 +193,16 @@ void ResetD3D8ScopeAimSmoothing(
     float normalFovRadians,
     float scopeFovRadians) noexcept;
 
-// Keeps the already head-adjusted camera position at the viewer while using
-// the authoritative controller-directed gun basis for the scoped view. The
-// weapon translation is deliberately ignored.
-[[nodiscard]] std::optional<Matrix4> MakeD3D8WeaponDirectedScopeCamera(
+// Keeps the already head-adjusted camera position at the viewer and the gun's
+// yaw/pitch aim, but separates their sideways roll. relativeHeadCamera is the
+// raw tracked head delta with no native game-camera swing mixed in. The
+// magnified world takes roll only from that head delta; the returned relative
+// roll lets the native mask/reticle take roll only from the weapon. Weapon
+// translation is ignored.
+[[nodiscard]] std::optional<IndependentScopeRollCamera>
+MakeD3D8IndependentRollScopeCamera(
     const Matrix4& headAdjustedCameraWorld,
+    const Matrix4& relativeHeadCamera,
     const Matrix4& controllerGunWorld) noexcept;
 
 // Applies relative scope zoom to an asymmetric OpenXR projection without

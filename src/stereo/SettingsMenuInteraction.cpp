@@ -216,7 +216,14 @@ SettingsMenuSelection SettingsMenuSelectionAt(
         {
             return SettingsMenuSelection::DeathCameraComfortEnabled;
         }
-        const float showCenterY = kSettingsMenuVrPageTwoRowCentersPixels[2];
+        if (pixelX >= kSettingsMenuControlColumnPixels &&
+            pixelX <= kSettingsMenuControlColumnPixels + 72.0F &&
+            pixelY >= kSettingsMenuVrPageTwoRowCentersPixels[2] - 38.0F &&
+            pixelY <= kSettingsMenuVrPageTwoRowCentersPixels[2] + 38.0F)
+        {
+            return SettingsMenuSelection::KeepHudUpright;
+        }
+        const float showCenterY = kSettingsMenuVrPageTwoRowCentersPixels[3];
         if (pixelY >= showCenterY - 38.0F &&
             pixelY <= showCenterY + 38.0F)
         {
@@ -233,8 +240,8 @@ SettingsMenuSelection SettingsMenuSelectionAt(
         }
         if (pixelX >= kSettingsMenuControlColumnPixels &&
             pixelX <= kSettingsMenuControlColumnPixels + 72.0F &&
-            pixelY >= kSettingsMenuVrPageTwoRowCentersPixels[3] - 38.0F &&
-            pixelY <= kSettingsMenuVrPageTwoRowCentersPixels[3] + 38.0F)
+            pixelY >= kSettingsMenuVrPageTwoRowCentersPixels[4] - 38.0F &&
+            pixelY <= kSettingsMenuVrPageTwoRowCentersPixels[4] + 38.0F)
         {
             return SettingsMenuSelection::MenuPointerSmoothingEnabled;
         }
@@ -514,6 +521,8 @@ const wchar_t* SettingsMenuSelectionName(
     case SettingsMenuSelection::ShowNext: return L"next Show mode";
     case SettingsMenuSelection::DeathCameraComfortEnabled:
         return L"Death Camera Comfort";
+    case SettingsMenuSelection::KeepHudUpright:
+        return L"Keep HUD Upright";
     case SettingsMenuSelection::MenuPointerSmoothingEnabled:
         return L"Menu Pointer Smoothing";
     case SettingsMenuSelection::CrosshairColorPrevious:
@@ -1088,6 +1097,11 @@ void SettingsMenuInteraction::Activate(
     case SettingsMenuSelection::DeathCameraComfortEnabled:
         values_.deathCameraComfortEnabled =
             !values_.deathCameraComfortEnabled;
+        valuesChanged_ = true;
+        status_ = SettingsMenuStatus::SettingsNotSaved;
+        break;
+    case SettingsMenuSelection::KeepHudUpright:
+        values_.keepHudUpright = !values_.keepHudUpright;
         valuesChanged_ = true;
         status_ = SettingsMenuStatus::SettingsNotSaved;
         break;

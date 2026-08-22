@@ -271,8 +271,10 @@ struct ControlBlock
     // VIEW; native menus use a latched LOCAL pose.
     volatile LONG frameUiReferenceMode =
         static_cast<LONG>(UiReferenceMode::WorldLocked);
-    // When non-zero, the x86 producer supplies the gravity-aligned LOCAL
-    // anchor shared by the world-locked menu panel and controller-ray mapper.
+    // When non-zero, the x86 producer supplies the auxiliary pose associated
+    // with framePresentationFlags: a gravity-aligned LOCAL menu anchor in
+    // ordinary mode, or a roll-only VIEW pose for an eye-filling scope. This
+    // dual use preserves the launch-proven protocol-v23 byte layout.
     volatile LONG frameUiWorldAnchorValid = 0;
     SharedPresentationPose frameUiWorldAnchor = {};
     // Published by the x86 producer before frameSequence. These flags control

@@ -30,6 +30,14 @@ struct LocalInfantryBodyPose
     stereo::Matrix4 world = {};
 };
 
+struct LocalInfantryPresentationContext
+{
+    const void* soldier = nullptr;
+    float bodyYawRadians = 0.0F;
+    bool bodyYawValid = false;
+    bool parachuteOverride = false;
+};
+
 // Resolves the occupied PlayerControlObject's first native weapon and samples
 // the same nominal FireArms transformation selected by the firing path.
 [[nodiscard]] bool InitializeMountedWeaponAimResolver(
@@ -78,5 +86,14 @@ ReadOccupiedVehicleWeaponStatus(
 // path, but returns only its normalized horizontal heading. This is distinct
 // from BF1942's faster first-person look/aim heading.
 [[nodiscard]] bool ReadLocalInfantryBodyYaw(float& yawRadians) noexcept;
+
+// Resolves the ordinary local infantry lifetime plus the one native state in
+// which BF1942 can temporarily expose another current control object while
+// the camera still belongs to the parachuting default soldier. This is a
+// read-only presentation query and never changes the soldier or control
+// object. A valid context can carry an unavailable body yaw for one frame.
+[[nodiscard]] bool ReadLocalInfantryPresentationContext(
+    const void* cameraSoldier,
+    LocalInfantryPresentationContext& presentationContext) noexcept;
 
 } // namespace bfvr

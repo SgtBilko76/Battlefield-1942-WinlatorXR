@@ -216,6 +216,7 @@ std::size_t OpenXRComfortVignette::AppendLayers(
             swapchain_.height,
             headInLocalSpace,
             viewsInLocalSpace,
+            {0.0F, 0.0F, 0.0F, 1.0F},
             layers_))
     {
         return 0;

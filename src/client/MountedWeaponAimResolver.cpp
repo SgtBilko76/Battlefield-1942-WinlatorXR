@@ -1,4 +1,5 @@
 #include "client/MountedWeaponAimResolver.h"
+#include "stereo/InfantryPresentationContextPolicy.h"
 
 #include <windows.h>
 
@@ -23,6 +24,8 @@ constexpr std::size_t kPlayerManagerLocalPlayerOffset = 0x54;
 constexpr std::size_t kBFPlayerCurrentControlObjectOffset = 0x64;
 constexpr std::size_t kBFPlayerDefaultControlObjectOffset = 0x98;
 constexpr std::size_t kBFPlayerIsAliveOffset = 0xA9;
+constexpr std::size_t kBFSoldierStateBitsOffset = 0x416;
+constexpr std::uint16_t kBFSoldierParachutingStateBit = 0x0010;
 constexpr std::uint32_t kMaximumPlausibleWeaponCount = 64;
 constexpr std::array<BYTE, 16> kFireArmsTransformationPrefix = {
     0x56, 0x8B, 0xF1, 0x8B, 0x46, 0x4C, 0x8A, 0x88,
@@ -119,6 +122,18 @@ bool ReadObjectTransformation(
         world = {};
         return false;
     }
+}
+
+bool ExtractHorizontalBodyYaw(
+    const bfvr::stereo::Matrix4& world,
+    float& yawRadians) noexcept
+{
+    return bfvr::stereo::ResolveHorizontalInfantryBodyYaw(
+        world.values[2][0],
+        world.values[2][2],
+        world.values[0][0],
+        world.values[0][2],
+        yawRadians);
 }
 
 bfvr::stereo::VehicleMotionAimWeaponStatus ReadFirstVehicleWeapon(
@@ -310,15 +325,61 @@ bool ReadLocalInfantryBodyYaw(float& yawRadians) noexcept
     {
         return false;
     }
-    const float forwardX = bodyPose.world.values[2][0];
-    const float forwardZ = bodyPose.world.values[2][2];
-    const float horizontalLength = std::hypot(forwardX, forwardZ);
-    if (!std::isfinite(horizontalLength) || horizontalLength < 0.5F)
+    return ExtractHorizontalBodyYaw(bodyPose.world, yawRadians);
+}
+
+bool ReadLocalInfantryPresentationContext(
+    const void* cameraSoldier,
+    LocalInfantryPresentationContext& presentationContext) noexcept
+{
+    presentationContext = {};
+    LocalPlayerControlContext playerContext = {};
+    if (!ReadLocalPlayerControlContext(playerContext))
     {
         return false;
     }
-    yawRadians = std::atan2(forwardX, forwardZ);
-    return std::isfinite(yawRadians);
+
+    bool soldierParachuting = false;
+    if (playerContext.currentControlObject !=
+        playerContext.defaultControlObject)
+    {
+        __try
+        {
+            const auto* const soldier = static_cast<const std::byte*>(
+                playerContext.defaultControlObject);
+            const std::uint16_t stateBits =
+                *reinterpret_cast<const std::uint16_t*>(
+                    soldier + kBFSoldierStateBitsOffset);
+            soldierParachuting =
+                (stateBits & kBFSoldierParachutingStateBit) != 0;
+        }
+        __except (EXCEPTION_EXECUTE_HANDLER)
+        {
+            return false;
+        }
+    }
+
+    const auto decision = stereo::ResolveInfantryPresentationContext({
+        playerContext.currentControlObject,
+        playerContext.defaultControlObject,
+        cameraSoldier,
+        playerContext.alive,
+        soldierParachuting});
+    if (!decision.eligible)
+    {
+        return false;
+    }
+
+    presentationContext.soldier = decision.soldier;
+    presentationContext.parachuteOverride = decision.parachuteOverride;
+    stereo::Matrix4 world = {};
+    if (ReadObjectTransformation(decision.soldier, world))
+    {
+        presentationContext.bodyYawValid = ExtractHorizontalBodyYaw(
+            world,
+            presentationContext.bodyYawRadians);
+    }
+    return true;
 }
 
 bool InitializeMountedWeaponAimResolver(

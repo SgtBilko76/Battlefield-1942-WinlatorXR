@@ -14,6 +14,7 @@
 #include "openxr/OpenXRQuickMenu.h"
 #include "openxr/OpenXRPerformanceSummary.h"
 #include "openxr/OpenXRPresentationSupport.h"
+#include "openxr/OpenXRHudRoll.h"
 #include "openxr/OpenXRScopeOverlayLayer.h"
 #include "openxr/OpenXRTrackingBasis.h"
 #include <algorithm>
@@ -1836,7 +1837,8 @@ public:
         OpenXRUiReferenceMode uiReferenceMode,
         const OpenXRPresentationPose* worldUiAnchor,
         OpenXRUiPresentationMode uiPresentationMode,
-        OpenXRSwapchainContentMode swapchainContentMode)
+        OpenXRSwapchainContentMode swapchainContentMode,
+        const bool keepHudUpright)
     {
         if (!frameInProgress)
         {
@@ -1935,6 +1937,16 @@ public:
                         OpenXRUiPresentationMode::EyeFillingScope &&
                     pendingHeadPoseValid)
                 {
+                    XrQuaternionf scopeRollInView = {};
+                    scopeRollInView.w = 1.0F;
+                    if (worldUiAnchor != nullptr)
+                    {
+                        scopeRollInView = {
+                            worldUiAnchor->orientationX,
+                            worldUiAnchor->orientationY,
+                            worldUiAnchor->orientationZ,
+                            worldUiAnchor->orientationW};
+                    }
                     submittedEyeFillingScope =
                         BuildOpenXREyeFillingScopeLayers(
                             viewSpace,
@@ -1943,6 +1955,7 @@ public:
                             uiSwapchain.height,
                             pendingHeadPose,
                             pendingViews,
+                            scopeRollInView,
                             scopeQuadLayers);
                     if (submittedEyeFillingScope)
                     {
@@ -1972,6 +1985,18 @@ public:
                     XrPosef uiPose = {};
                     uiPose.orientation.w = 1.0F;
                     uiPose.position.z = -configuration.uiDistanceMeters;
+                    if (uiReferenceMode ==
+                            OpenXRUiReferenceMode::HeadLocked &&
+                        keepHudUpright && pendingHeadPoseValid)
+                    {
+                        XrQuaternionf uprightRoll = {};
+                        if (BuildOpenXRGravityUprightViewRoll(
+                                pendingHeadPose.orientation,
+                                uprightRoll))
+                        {
+                            uiPose.orientation = uprightRoll;
+                        }
+                    }
                     if (uiReferenceMode ==
                         OpenXRUiReferenceMode::WorldLocked)
                     {
@@ -2106,7 +2131,8 @@ public:
         const OpenXRPresentationTextures& textures,
         OpenXRUiReferenceMode uiReferenceMode,
         const OpenXRPresentationPose* worldUiAnchor,
-        OpenXRUiPresentationMode uiPresentationMode)
+        OpenXRUiPresentationMode uiPresentationMode,
+        const bool keepHudUpright)
     {
         OpenXRPresentationFrameState frameState = {};
         return BeginFrame(frameState) &&
@@ -2115,7 +2141,8 @@ public:
                 uiReferenceMode,
                 worldUiAnchor,
                 uiPresentationMode,
-                OpenXRSwapchainContentMode::Update);
+                OpenXRSwapchainContentMode::Update,
+                keepHudUpright);
     }
 
     void DestroySwapchain(Swapchain& swapchain)
@@ -2595,14 +2622,16 @@ bool OpenXRPresentation::SubmitFrame(
     const OpenXRPresentationTextures& textures,
     OpenXRUiReferenceMode uiReferenceMode,
     const OpenXRPresentationPose* worldUiAnchor,
-    OpenXRUiPresentationMode uiPresentationMode)
+    OpenXRUiPresentationMode uiPresentationMode,
+    const bool keepHudUpright)
 {
     return impl_ != nullptr &&
         impl_->SubmitFrame(
             textures,
             uiReferenceMode,
             worldUiAnchor,
-            uiPresentationMode);
+            uiPresentationMode,
+            keepHudUpright);
 }
 bool OpenXRPresentation::BeginFrame(OpenXRPresentationFrameState& frameState)
 {
@@ -2613,7 +2642,8 @@ bool OpenXRPresentation::EndFrame(
     OpenXRUiReferenceMode uiReferenceMode,
     const OpenXRPresentationPose* worldUiAnchor,
     OpenXRUiPresentationMode uiPresentationMode,
-    OpenXRSwapchainContentMode swapchainContentMode)
+    OpenXRSwapchainContentMode swapchainContentMode,
+    const bool keepHudUpright)
 {
     return impl_ != nullptr &&
         impl_->EndFrame(
@@ -2621,7 +2651,8 @@ bool OpenXRPresentation::EndFrame(
             uiReferenceMode,
             worldUiAnchor,
             uiPresentationMode,
-            swapchainContentMode);
+            swapchainContentMode,
+            keepHudUpright);
 }
 stereo::QuickMenuSelection
 OpenXRPresentation::TakeQuickMenuSelection() noexcept

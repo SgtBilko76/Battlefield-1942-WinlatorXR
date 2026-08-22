@@ -323,6 +323,7 @@ public:
         const bool infantryPresentationYawValid,
         const float infantryPresentationYawRadians)
     {
+        InterlockedExchange(&scopeOverlayRollSequence, 0);
         referenceHead = newReferenceHead;
         currentHead = MakeD3D8RuntimeHeadReference(request);
         if (request.controllerInput.valid &&
@@ -381,6 +382,7 @@ public:
         InterlockedExchange(&requestedSequence, 0);
         InterlockedExchange(&appliedSequence, 0);
         InterlockedExchange(&appliedSourceSequence, 0);
+        InterlockedExchange(&scopeOverlayRollSequence, 0);
         InterlockedExchange(&appliedFrustumSequence, 0);
     }
 
@@ -428,6 +430,34 @@ public:
             return false;
         }
         sourceCamera = candidate;
+        return true;
+    }
+
+    bool TryGetScopeOverlayRoll(
+        LONG sequence,
+        float& rollRadians) const noexcept
+    {
+        rollRadians = 0.0F;
+        if (sequence <= 0 ||
+            InterlockedCompareExchange(
+                const_cast<volatile LONG*>(&scopeOverlayRollSequence),
+                0,
+                0) != sequence)
+        {
+            return false;
+        }
+        MemoryBarrier();
+        const float candidate = scopeOverlayRollRadians;
+        MemoryBarrier();
+        if (InterlockedCompareExchange(
+                const_cast<volatile LONG*>(&scopeOverlayRollSequence),
+                0,
+                0) != sequence ||
+            !std::isfinite(candidate))
+        {
+            return false;
+        }
+        rollRadians = candidate;
         return true;
     }
 
@@ -480,6 +510,7 @@ public:
         ResetMountedCameraAnchor(false);
         MemoryBarrier();
         InterlockedExchange(&appliedSourceSequence, 0);
+        InterlockedExchange(&scopeOverlayRollSequence, 0);
         mountedCameraControl = {};
         InterlockedExchange(&requestedMountedCameraToggleSequence, 0);
         InterlockedExchange(&mountedCameraDecoupled, 0);
@@ -809,12 +840,24 @@ private:
             // BF1942's native-authority target. Ordinary controller motion is
             // direct; only tiny reversing jitter receives a small correction.
             // WeaponFire_Core itself remains on the stock authority path.
-            const auto scoped = stereo::MakeD3D8WeaponDirectedScopeCamera(
-                finalCamera,
-                scope.controllerGunWorld);
+            const auto relativeHeadCamera =
+                stereo::ComposeRuntimeHeadWithD3D8Camera(
+                    IdentityMatrix(),
+                    ToPose(referenceHead),
+                    ToPose(currentHead),
+                    kWorldUnitsPerMeter);
+            const auto scoped = relativeHeadCamera.has_value()
+                ? stereo::MakeD3D8IndependentRollScopeCamera(
+                      finalCamera,
+                      *relativeHeadCamera,
+                      scope.controllerGunWorld)
+                : std::nullopt;
             if (scoped.has_value())
             {
-                finalCamera = *scoped;
+                finalCamera = scoped->cameraWorld;
+                scopeOverlayRollRadians = scoped->overlayRollRadians;
+                MemoryBarrier();
+                InterlockedExchange(&scopeOverlayRollSequence, sequence);
                 InterlockedIncrement(&scopedCalls);
             }
             else
@@ -879,10 +922,22 @@ private:
             std::optional<stereo::Matrix4> visibilityCamera = adjusted;
             if (adjusted.has_value() && scoped)
             {
-                visibilityCamera =
-                    stereo::MakeD3D8WeaponDirectedScopeCamera(
-                        *adjusted,
-                        scope.controllerGunWorld);
+                const auto relativeHeadCamera =
+                    stereo::ComposeRuntimeHeadWithD3D8Camera(
+                        IdentityMatrix(),
+                        ToPose(referenceHead),
+                        ToPose(currentHead),
+                        kWorldUnitsPerMeter);
+                const auto independentRoll = relativeHeadCamera.has_value()
+                    ? stereo::MakeD3D8IndependentRollScopeCamera(
+                          *adjusted,
+                          *relativeHeadCamera,
+                          scope.controllerGunWorld)
+                    : std::nullopt;
+                visibilityCamera = independentRoll.has_value()
+                    ? std::optional<stereo::Matrix4>(
+                          independentRoll->cameraWorld)
+                    : std::nullopt;
             }
             if (visibilityCamera.has_value())
             {
@@ -1253,6 +1308,7 @@ private:
     volatile LONG requestedSequence = 0;
     volatile LONG appliedSequence = 0;
     volatile LONG appliedSourceSequence = 0;
+    volatile LONG scopeOverlayRollSequence = 0;
     volatile LONG matchingCalls = 0;
     volatile LONG appliedCalls = 0;
     volatile LONG rejectedTransforms = 0;
@@ -1288,6 +1344,7 @@ private:
     volatile LONG firstInfantryComfortLogged = 0;
     volatile LONG scopeNormalFovRestorePending = 0;
     float pendingScopeNormalFov = -1.0F;
+    float scopeOverlayRollRadians = 0.0F;
     float requestedInfantryPresentationYawRadians = 0.0F;
     LONG tracedFireSequence = 0;
     LONG tracedFireFrames = 0;
@@ -1370,6 +1427,14 @@ bool D3D8RenderViewPoseHook::TryGetAppliedSourceCamera(
 {
     return impl_ != nullptr &&
         impl_->TryGetAppliedSourceCamera(sequence, sourceCamera);
+}
+
+bool D3D8RenderViewPoseHook::TryGetScopeOverlayRoll(
+    LONG sequence,
+    float& rollRadians) const noexcept
+{
+    return impl_ != nullptr &&
+        impl_->TryGetScopeOverlayRoll(sequence, rollRadians);
 }
 
 bool D3D8RenderViewPoseHook::IsMountedCameraDecoupled() const noexcept

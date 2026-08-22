@@ -420,6 +420,7 @@ bool g_trackingSettingsInitialized = false;
 bool g_loggedImmutableLocalTrackingOrigin = false;
 bool g_loggedRequestCadenceSmoothTurn = false;
 bool g_loggedRequestCadenceSnapTurn = false;
+bool g_loggedParachutePresentationOverrideActive = false;
 volatile LONG g_loggedWaterPassStateMask = 0;
 volatile LONG g_projectedShadowAuditMask = 0;
 volatile LONG g_projectedShadowAuditDraws = 0;

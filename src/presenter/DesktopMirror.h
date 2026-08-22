@@ -33,6 +33,7 @@ public:
         const OpenXRPresentationView* rightEyeView = nullptr,
         OpenXRUiPresentationMode uiPresentationMode =
             OpenXRUiPresentationMode::Standard,
+        const OpenXRPresentationPose* scopeRollInView = nullptr,
         const OpenXRQuickMenuMirrorState* quickMenu = nullptr);
     void Shutdown();
 

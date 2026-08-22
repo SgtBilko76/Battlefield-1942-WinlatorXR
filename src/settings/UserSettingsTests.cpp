@@ -233,7 +233,7 @@ bool TestProductionSeedAndTypedValues(const std::wstring& directory)
     }
     const auto defaults = store.Defaults();
     const auto decodedDefaults = bfvr::settings::DecodeUserSettings(defaults);
-    if (defaults.values.size() != 45 ||
+    if (defaults.values.size() != 46 ||
         decodedDefaults.playMode != bfvr::settings::PlayMode::Seated ||
         decodedDefaults.artificialTurnMode !=
             bfvr::settings::ArtificialTurnMode::Smooth ||
@@ -250,6 +250,7 @@ bool TestProductionSeedAndTypedValues(const std::wstring& directory)
         decodedDefaults.standingEyeHeightCentimeters != 170 ||
         decodedDefaults.comfortVignetteEnabled ||
         !decodedDefaults.deathCameraComfortEnabled ||
+        !decodedDefaults.keepHudUpright ||
         decodedDefaults.firstPersonVisibility !=
             bfvr::settings::FirstPersonVisibility::ArmsAndHands ||
         decodedDefaults.infantryTurnSpeedPercent != 200 ||
@@ -326,6 +327,7 @@ bool TestProductionSeedAndTypedValues(const std::wstring& directory)
     changed.standingEyeHeightCentimeters = 182;
     changed.comfortVignetteEnabled = false;
     changed.deathCameraComfortEnabled = false;
+    changed.keepHudUpright = false;
     changed.firstPersonVisibility =
         bfvr::settings::FirstPersonVisibility::HandsOnly;
     changed.invertFlightPitch = true;
@@ -437,6 +439,10 @@ bool TestProductionSeedAndTypedValues(const std::wstring& directory)
         contents.find("comfort_vignette_enabled = false") !=
             std::string::npos &&
         contents.find("death_camera_comfort_enabled = false") !=
+            std::string::npos &&
+        contents.find("keep_hud_upright = false") !=
+            std::string::npos &&
+        contents.find("native menus, the scoreboard path") !=
             std::string::npos &&
         contents.find("show_arms = hands_only") != std::string::npos &&
         contents.find("HUD, scope, Quick Menu, VR Settings") !=

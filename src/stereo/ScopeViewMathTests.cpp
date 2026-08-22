@@ -32,6 +32,18 @@ Matrix4 Yaw(float radians) noexcept
     return result;
 }
 
+Matrix4 Roll(float radians) noexcept
+{
+    Matrix4 result = Identity();
+    const float cosine = std::cos(radians);
+    const float sine = std::sin(radians);
+    result.values[0][0] = cosine;
+    result.values[0][1] = sine;
+    result.values[1][0] = -sine;
+    result.values[1][1] = cosine;
+    return result;
+}
+
 Matrix4 Multiply(const Matrix4& left, const Matrix4& right) noexcept
 {
     Matrix4 result = {};
@@ -220,38 +232,78 @@ bool TestInvalidFovFailsClosed() noexcept
                 0.7F).has_value();
 }
 
-bool TestScopeCameraUsesGunRotationAndHeadPosition() noexcept
+bool TestScopeCameraSeparatesHeadAndWeaponRoll() noexcept
 {
-    Matrix4 headCamera = Yaw(-0.3F);
+    constexpr float headRoll = 0.35F;
+    constexpr float weaponRoll = -0.55F;
+    Matrix4 headCamera = Multiply(Roll(-0.72F), Yaw(-0.3F));
     headCamera.values[3][0] = 12.0F;
     headCamera.values[3][1] = 3.5F;
     headCamera.values[3][2] = -8.0F;
-    Matrix4 gun = Yaw(0.85F);
+    Matrix4 gun = Multiply(Roll(weaponRoll), Yaw(0.85F));
     gun.values[3][0] = 90.0F;
     gun.values[3][1] = 80.0F;
     gun.values[3][2] = 70.0F;
 
     const auto scoped =
-        bfvr::stereo::MakeD3D8WeaponDirectedScopeCamera(headCamera, gun);
+        bfvr::stereo::MakeD3D8IndependentRollScopeCamera(
+            headCamera,
+            Roll(headRoll),
+            gun);
     if (!scoped.has_value())
     {
         return false;
     }
+    const Matrix4 expectedWorld = Multiply(Roll(headRoll), Yaw(0.85F));
     for (std::size_t row = 0; row < 3; ++row)
     {
         for (std::size_t column = 0; column < 3; ++column)
         {
             if (!NearlyEqual(
-                    scoped->values[row][column],
-                    gun.values[row][column]))
+                    scoped->cameraWorld.values[row][column],
+                    expectedWorld.values[row][column]))
             {
                 return false;
             }
         }
     }
-    return NearlyEqual(scoped->values[3][0], 12.0F) &&
-        NearlyEqual(scoped->values[3][1], 3.5F) &&
-        NearlyEqual(scoped->values[3][2], -8.0F);
+    return NearlyEqual(scoped->cameraWorld.values[3][0], 12.0F) &&
+        NearlyEqual(scoped->cameraWorld.values[3][1], 3.5F) &&
+        NearlyEqual(scoped->cameraWorld.values[3][2], -8.0F) &&
+        NearlyEqual(
+            scoped->overlayRollRadians,
+            weaponRoll - headRoll);
+}
+
+bool TestScopeRollSourcesRemainIndependent() noexcept
+{
+    constexpr float headRoll = 0.42F;
+    constexpr float weaponRoll = -0.31F;
+    const auto headOnly =
+        bfvr::stereo::MakeD3D8IndependentRollScopeCamera(
+            Roll(headRoll),
+            Roll(headRoll),
+            Identity());
+    const auto weaponOnly =
+        bfvr::stereo::MakeD3D8IndependentRollScopeCamera(
+            Identity(),
+            Identity(),
+            Roll(weaponRoll));
+    const auto matched =
+        bfvr::stereo::MakeD3D8IndependentRollScopeCamera(
+            Roll(headRoll),
+            Roll(headRoll),
+            Roll(headRoll));
+    return headOnly.has_value() && weaponOnly.has_value() &&
+        matched.has_value() &&
+        NearlyEqual(
+            headOnly->cameraWorld.values[0][1],
+            std::sin(headRoll)) &&
+        NearlyEqual(headOnly->overlayRollRadians, -headRoll) &&
+        NearlyEqual(weaponOnly->cameraWorld.values[0][1], 0.0F) &&
+        NearlyEqual(weaponOnly->overlayRollRadians, weaponRoll) &&
+        NearlyEqual(matched->cameraWorld.values[0][1], std::sin(headRoll)) &&
+        NearlyEqual(matched->overlayRollRadians, 0.0F);
 }
 
 bool TestProjectionScalePreservesCentreAndDepth() noexcept
@@ -641,7 +693,8 @@ bool TestInvalidCameraAndProjectionFailClosed() noexcept
     invalidCamera.values[0][0] = 0.0F;
     Matrix4 projection = Identity();
     const Matrix4 original = projection;
-    return !bfvr::stereo::MakeD3D8WeaponDirectedScopeCamera(
+    return !bfvr::stereo::MakeD3D8IndependentRollScopeCamera(
+                Identity(),
                 Identity(),
                 invalidCamera).has_value() &&
         !bfvr::stereo::ApplyD3D8ScopeProjectionScale(
@@ -717,7 +770,8 @@ int main()
         !TestTrackedScopeAimRetainsAuthoritativeLocalCorrection() ||
         !TestScopedOffHandSupportRemainsHeldRegardlessOfDistance() ||
         !TestInvalidFovFailsClosed() ||
-        !TestScopeCameraUsesGunRotationAndHeadPosition() ||
+        !TestScopeCameraSeparatesHeadAndWeaponRoll() ||
+        !TestScopeRollSourcesRemainIndependent() ||
         !TestScopeAimSmoothingAttenuatesMicroMotionAndTranslation() ||
         !TestScopeAimSmoothingHandlesSustainedMotionAndBypassesAtBound() ||
         !TestScopeAimSmoothingResetsAtEveryDiscontinuity() ||

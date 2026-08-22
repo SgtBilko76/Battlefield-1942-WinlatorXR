@@ -71,6 +71,7 @@ if(BFVR_PRESENTER_ONLY)
     openxr/OpenXRPerformanceSummary.cpp
     openxr/OpenXRPresentation.cpp
     openxr/OpenXRPresentationSupport.cpp
+    openxr/OpenXRHudRoll.cpp
     openxr/OpenXRScopeOverlayLayer.cpp
     openxr/OpenXRTrackingBasis.cpp
     stereo/QuickMenuInteraction.cpp
@@ -94,6 +95,7 @@ if(BFVR_PRESENTER_ONLY)
     openxr/OpenXRPerformanceSummary.cpp
     openxr/OpenXRPresentation.cpp
     openxr/OpenXRPresentationSupport.cpp
+    openxr/OpenXRHudRoll.cpp
     openxr/OpenXRScopeOverlayLayer.cpp
     openxr/OpenXRTrackingBasis.cpp
     settings/UserSettings.cpp
@@ -353,6 +355,7 @@ add_executable(BFVROpenXRProbe
   openxr/OpenXRPerformanceSummary.cpp
   openxr/OpenXRPresentation.cpp
   openxr/OpenXRPresentationSupport.cpp
+  openxr/OpenXRHudRoll.cpp
   openxr/OpenXRScopeOverlayLayer.cpp
   openxr/OpenXRTrackingBasis.cpp
   settings/UserSettings.cpp
@@ -404,6 +407,12 @@ add_executable(BFVRWeaponFireAimMathTests
 add_executable(BFVRHandWeaponRecoilMathTests
   stereo/HandWeaponRecoilMathTests.cpp
 )
+
+add_executable(BFVRBFSoldierAttachmentPosePairerTests
+  client/BFSoldierAttachmentPosePairerTests.cpp
+)
+target_include_directories(BFVRBFSoldierAttachmentPosePairerTests PRIVATE
+  "${CMAKE_CURRENT_SOURCE_DIR}")
 
 add_executable(BFVROffHandSupportPolicyTests
   client/BFSoldierLeftGripRotationBinding.cpp
@@ -517,6 +526,7 @@ add_executable(BFVRScopeViewMathTests
 )
 
 add_executable(BFVROpenXRScopeOverlayLayerTests
+  openxr/OpenXRHudRoll.cpp
   openxr/OpenXRScopeOverlayLayer.cpp
   openxr/OpenXRScopeOverlayLayerTests.cpp
 )
@@ -549,7 +559,7 @@ add_executable(BFVRRfaInspect
   tools/RfaInspect.cpp
 )
 
-foreach(target BFVRClient BFVRD3D8To9FlatClient BFVRLoader BFVRBf42PlusPlusCompatibilityTests BFVRFrameLimiterOverrideTests BFVROpenXRProbe BFVRSharedTextureProducerProbe BFVRD3D8To9SharedSurfaceProbe BFVRAmbientOcclusionDepthProbe BFVRStereoMath BFVRStereoMathTests BFVRWaterReflectionTextureBasisTests BFVRProjectedShadowTextureTransformTests BFVRWeaponFireAimMathTests BFVRHandWeaponRecoilMathTests BFVROffHandSupportPolicyTests BFVRArmPoleVectorMathTests BFVRArmVrPoseMathTests BFVRMainMenuOverlayTests BFVRQuickMenuTests BFVRSettingsMenuTests BFVRUserSettingsTests BFVRUserSettingsSeedWriter BFVROpenXRHapticsTests BFVROpenXRControllerShortcutTests BFVROpenXRControllerBindingTests BFVRVehicleMotionAimMathTests BFVRDirectionalLocomotionTests BFVRComfortVignetteTests BFVRSurfaceVehicleDriveMathTests BFVRAircraftControlMathTests BFVRTrackingAnchorTests BFVRInfantryAuthoritativeAimTests BFVRInfantryPresentationTurnTests BFVRControllerInputCacheTests BFVRMountedCameraMathTests BFVRInfantryCameraMathTests BFVRScopeViewMathTests BFVROpenXRScopeOverlayLayerTests BFVRWorldCrosshairMathTests BFVRUiPointerSmoothingTests BFVRRuntimeDiagnosticsTests BFVRSharedControlChannelTests BFVRKillSoundEventPolicyTests BFVRRfaInspect)
+foreach(target BFVRClient BFVRD3D8To9FlatClient BFVRLoader BFVRBf42PlusPlusCompatibilityTests BFVRFrameLimiterOverrideTests BFVROpenXRProbe BFVRSharedTextureProducerProbe BFVRD3D8To9SharedSurfaceProbe BFVRAmbientOcclusionDepthProbe BFVRStereoMath BFVRStereoMathTests BFVRWaterReflectionTextureBasisTests BFVRProjectedShadowTextureTransformTests BFVRWeaponFireAimMathTests BFVRHandWeaponRecoilMathTests BFVRBFSoldierAttachmentPosePairerTests BFVROffHandSupportPolicyTests BFVRArmPoleVectorMathTests BFVRArmVrPoseMathTests BFVRMainMenuOverlayTests BFVRQuickMenuTests BFVRSettingsMenuTests BFVRUserSettingsTests BFVRUserSettingsSeedWriter BFVROpenXRHapticsTests BFVROpenXRControllerShortcutTests BFVROpenXRControllerBindingTests BFVRVehicleMotionAimMathTests BFVRDirectionalLocomotionTests BFVRComfortVignetteTests BFVRSurfaceVehicleDriveMathTests BFVRAircraftControlMathTests BFVRTrackingAnchorTests BFVRInfantryAuthoritativeAimTests BFVRInfantryPresentationTurnTests BFVRControllerInputCacheTests BFVRMountedCameraMathTests BFVRInfantryCameraMathTests BFVRScopeViewMathTests BFVROpenXRScopeOverlayLayerTests BFVRWorldCrosshairMathTests BFVRUiPointerSmoothingTests BFVRRuntimeDiagnosticsTests BFVRSharedControlChannelTests BFVRKillSoundEventPolicyTests BFVRRfaInspect)
   target_compile_definitions(${target} PRIVATE WIN32_LEAN_AND_MEAN NOMINMAX UNICODE _UNICODE)
   set_property(TARGET ${target} PROPERTY MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
   if(MSVC)
@@ -673,6 +683,9 @@ if(BUILD_TESTING)
   add_test(
     NAME BFVRHandWeaponRecoilMathTests
     COMMAND BFVRHandWeaponRecoilMathTests)
+  add_test(
+    NAME BFVRBFSoldierAttachmentPosePairerTests
+    COMMAND BFVRBFSoldierAttachmentPosePairerTests)
   add_test(
     NAME BFVROffHandSupportPolicyTests
     COMMAND BFVROffHandSupportPolicyTests)
