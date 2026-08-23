@@ -75,6 +75,9 @@ var
   ExistingBfvrDetected: Boolean;
   ExistingBfvrDirectory: String;
   ExistingBfvrVersion: String;
+  ExistingBfvrUpgradePage: TWizardPage;
+  ExistingBfvrMaintenancePage: TInputOptionWizardPage;
+  MaintenanceUninstallFinished: Boolean;
 
 function IsGameRoot(const Candidate: String): Boolean;
 begin
@@ -138,6 +141,7 @@ end;
 procedure InitializeWizard();
 var
   ExistingVersionDescription: String;
+  UpgradeDetails: TNewStaticText;
 begin
   ExistingBfvrDirectory := '';
   ExistingBfvrVersion := '';
@@ -151,17 +155,48 @@ begin
   Log(
     'Detected existing BFVR installation for in-place update: version=' +
     ExistingBfvrVersion + ' directory=' + ExistingBfvrDirectory);
+  if CompareText(ExistingBfvrVersion, '{#AppVersion}') = 0 then
+  begin
+    ExistingBfvrMaintenancePage := CreateInputOptionPage(
+      wpWelcome,
+      'BFVR v{#AppVersion} is already installed',
+      'Choose what Setup should do',
+      'Setup found BFVR v{#AppVersion} at:' + #13#10 +
+      ExistingBfvrDirectory + #13#10 + #13#10 +
+      'Repairing or reinstalling replaces BFVR program files and guides while ' +
+      'preserving UserConfig.txt and its saved settings.',
+      True,
+      False);
+    ExistingBfvrMaintenancePage.Add(
+      'Repair/reinstall BFVR v{#AppVersion} (preserve saved settings)');
+    ExistingBfvrMaintenancePage.Add('Uninstall BFVR v{#AppVersion}');
+    ExistingBfvrMaintenancePage.SelectedValueIndex := 0;
+    exit;
+  end;
+
   if ExistingBfvrVersion = '' then
     ExistingVersionDescription := 'an existing BFVR installation'
   else
     ExistingVersionDescription := 'BFVR v' + ExistingBfvrVersion;
 
-  WizardForm.WelcomeLabel2.Caption :=
-    WizardForm.WelcomeLabel2.Caption + #13#10 + #13#10 +
-    'Setup detected ' + ExistingVersionDescription + ' at:' + #13#10 +
+  ExistingBfvrUpgradePage := CreateCustomPage(
+    wpWelcome,
+    'Update BFVR to v{#AppVersion}',
+    'A previous BFVR installation was found');
+  UpgradeDetails := TNewStaticText.Create(ExistingBfvrUpgradePage);
+  UpgradeDetails.Parent := ExistingBfvrUpgradePage.Surface;
+  UpgradeDetails.Left := 0;
+  UpgradeDetails.Top := 0;
+  UpgradeDetails.Width := ExistingBfvrUpgradePage.SurfaceWidth;
+  UpgradeDetails.Height := ScaleY(180);
+  UpgradeDetails.AutoSize := False;
+  UpgradeDetails.WordWrap := True;
+  UpgradeDetails.Caption :=
+    'Setup detected ' + ExistingVersionDescription + ' at:' + #13#10 + #13#10 +
     ExistingBfvrDirectory + #13#10 + #13#10 +
-    'BFVR v{#AppVersion} will be installed over it. Program files and guides ' +
-    'will be updated, while UserConfig.txt and its saved settings will be preserved.';
+    'Setup will update it in place to BFVR v{#AppVersion}. Program files and ' +
+    'guides will be replaced, while UserConfig.txt and its saved settings will ' +
+    'be preserved.';
 end;
 
 procedure ShowBf42PlusPlusWarning(const BundledProxyPresent: Boolean);
@@ -227,8 +262,60 @@ var
   SelectedDirectory: String;
   GameRoot: String;
   GameExecutable: String;
+  Uninstaller: String;
+  UninstallResult: Integer;
 begin
   Result := True;
+  if (ExistingBfvrMaintenancePage <> nil) and
+     (CurPageID = ExistingBfvrMaintenancePage.ID) and
+     (ExistingBfvrMaintenancePage.SelectedValueIndex = 1) then
+  begin
+    Result := False;
+    Uninstaller := AddBackslash(ExistingBfvrDirectory) + 'unins000.exe';
+    if not FileExists(Uninstaller) then
+    begin
+      MsgBox(
+        'The existing BFVR uninstaller could not be found. Choose Repair/reinstall, ' +
+        'or remove BFVR through Windows Installed apps.',
+        mbError,
+        MB_OK);
+      exit;
+    end;
+
+    if MsgBox(
+         'Uninstall BFVR v{#AppVersion} from this Battlefield 1942 installation?',
+         mbConfirmation,
+         MB_YESNO) <> IDYES then
+      exit;
+
+    Log('Launching the existing BFVR uninstaller from maintenance mode.');
+    if not Exec(
+             Uninstaller,
+             '',
+             ExistingBfvrDirectory,
+             SW_SHOWNORMAL,
+             ewWaitUntilTerminated,
+             UninstallResult) then
+    begin
+      MsgBox('The BFVR uninstaller could not be started.', mbError, MB_OK);
+      exit;
+    end;
+
+    if UninstallResult <> 0 then
+    begin
+      MsgBox(
+        'The BFVR uninstaller did not complete. You may return to Setup and ' +
+        'choose Repair/reinstall instead.',
+        mbInformation,
+        MB_OK);
+      exit;
+    end;
+
+    MaintenanceUninstallFinished := True;
+    WizardForm.Close;
+    exit;
+  end;
+
   if CurPageID <> wpSelectDir then
     exit;
 
@@ -259,6 +346,18 @@ begin
     ShowBf42PlusPlusWarning(
       FileExists(AddBackslash(GameRoot) + 'dsound.dll'));
 
+end;
+
+procedure CancelButtonClick(
+  CurPageID: Integer;
+  var Cancel: Boolean;
+  var Confirm: Boolean);
+begin
+  if MaintenanceUninstallFinished then
+  begin
+    Cancel := True;
+    Confirm := False;
+  end;
 end;
 
 procedure RestoreIntroMovieIfNeeded();
