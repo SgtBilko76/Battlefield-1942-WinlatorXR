@@ -126,7 +126,7 @@ one usable BF42++ loading path before loading BFVR into Battlefield 1942.
 
 Do not combine a bundled BF42++ `dsound.dll` with a second copied
 `bf42++.dll`. BFVR recognizes a bundled BF42++ proxy and uses that one directly
-to avoid loading BF42++ twice. If both are already present, BFVR 1.0.1 ignores
+to avoid loading BF42++ twice. If both are already present, BFVR 1.0.2 ignores
 the extra `bf42++.dll` for that launch, so the duplicate should not break BFVR.
 
 If BFVR reports obsolete BF42Plus 1.3.4, remove that old `dsound.dll` and
@@ -152,9 +152,50 @@ may differ at internal locations BFVR uses. If the build works, report that
 result so it can be recorded. If it fails, include where the executable came
 from and exactly what happened in a GitHub issue.
 
+For the easiest currently supported setup, the Moongamers Battlefield 1942
+versions are recommended. BFVR is planned to eventually be bundled with the
+Battlefield 1942 VKHD installers. Other retail, digital, and community-modified
+versions may work, but an unfamiliar executable can require additional
+compatibility work.
+
+### Low, uneven, or capped frame rate
+
+BFVR normally disables Battlefield 1942's internal frame limiter
+automatically, but this override may not work with every executable or
+installation. If performance remains low or uneven, open
+`Mods\bf1942\Settings\VideoDefault.con` inside the Battlefield 1942
+installation and add:
+
+```text
+renderer.lockFPS -1
+```
+
+Save the file and restart the game.
+
+If BFVR is unexpectedly capped near 60 or 30 FPS, add this separate line to
+the same `VideoDefault.con` file:
+
+```text
+renderer.setVSyncEnabled 0 0
+```
+
+Save the file and restart the game. Both values must be `0`. If the cap
+remains, also ensure that VSync is not being forced by the GPU driver or a
+graphics wrapper.
+
+If performance is still an issue, try running the headset at 80 Hz or 72 Hz
+in SteamVR or VDXR. A lower headset refresh rate gives BFVR more time to
+produce each frame.
+
+Some mod maps contain unusually large amounts of foliage, buildings, or other
+static objects and are not expected to maintain smooth VR performance in every
+scene. Large bot counts can also be substantially more demanding. Reduce the
+bot count or choose a less complex map when troubleshooting performance before
+assuming that the VR runtime or installation is broken.
+
 ### Windows or antivirus warns about BFVR
 
-The v1.0.1 installer is unsigned, and BFVR must load its DLL into an old game
+The v1.0.2 installer is unsigned, and BFVR must load its DLL into an old game
 process. Only use files from the official BFVR GitHub Release and compare the
 published checksum. Do not disable antivirus globally.
 

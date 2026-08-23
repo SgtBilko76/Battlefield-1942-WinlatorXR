@@ -1,124 +1,39 @@
 # BFVR Changelog
 
 This file records user-visible changes to BFVR. GitHub Release notes should use
-a shorter version of the same information.
+the v1.0.2 section exactly as written below.
 
-## [Unreleased] - potential 1.0.2
+## [1.0.2]
 
-### Added
-
-- Added a saved **3D Crosshair Opacity** slider beside all other 3D crosshair
-  controls. It ranges from 5% to 100% in 5% steps and affects both the aiming
-  crosshair and confirmed-hit marker; enabled feedback can never be made fully
-  invisible.
-- Added default-on **Menu Pointer Smoothing** for Battlefield's native menus,
-  the Quick Menu, and the VR Settings dialog. The saved VR Settings toggle
-  suppresses controller tremor while keeping deliberate cursor movement
-  responsive, and can restore direct unfiltered pointing without a restart.
-- VR Settings now shows `BFVR v1.0.2 - JayBiggsGaming` in the selected 3D
-  crosshair green beneath the menu. The displayed version, launcher text,
-  Windows file metadata, and installer version now share one release-version
-  definition.
-- Added a saved **Turret Motion Sensitivity** slider to Controls for tank
-  cannons, other land/sea vehicle turrets, AA, and mounted weapons. It ranges
-  from 50% to 300%, defaults to the accepted 200% response, applies after Save
-  without restarting, and does not alter right-stick sensitivity.
-- Added an opt-in, aggregate-only `BFVR_PERFORMANCE_SUMMARY=1` diagnostic for
-  isolating runtime slowdown without re-enabling the broad trace stream. It
-  reports x86 replay/skinning/pacing, x64 source/effect enqueue stages,
-  swapchain API calls, and actual `xrEndFrame` at 30-second intervals and
-  shutdown; it does not change launch or frame scheduling.
-- Added a live **Show** selector with Arms & Hands, Hands Only, and No
-  Hands/Arms choices, plus a default-on **Death Camera Comfort** option to VR
-  Settings. The visibility selector leaves native animation and pose solving
-  active. Death comfort uses a tighter muted dark-red vignette during the
-  native death-camera flight without flattening or freezing VR.
-- Added an independent **Knives / Throwables / Gadgets** 3D crosshair mode
-  with On, Hit Marker Only, and Off choices. It defaults to On.
-- Added an eight-choice **3D Crosshair Color** selector with White, Green,
-  Blue, Purple, Red, Pink, Orange, and Yellow choices for the crosshair and hit
-  marker. The existing per-eye world renderer now tints neutral grayscale art
-  without changing endpoint calculation, placement, or angular size.
-- Added a second Graphics page with **Original**, **Filmic**, and **Vibrant**
-  color profiles plus centered exposure, contrast, and saturation sliders and
-  a dedicated color reset action.
-- Added a default-on **Kill Sound** option on a dedicated Graphics / Audio
-  page. Battlefield's authoritative score handling drives the supplied sound
-  in single-player and multiplayer. Separate kills use independent overlapping
-  voices instead of restarting the previous sound, while confirmations within
-  300 ms collapse into one grenade-style multi-kill sound.
-
-### Changed
-
-- Physical right-controller movement now aims only an occupied land/sea or
-  mounted station that exposes a native weapon. Unarmed driver and passenger
-  freelook positions ignore controller movement while retaining head look,
-  right-stick turning, mouse look, and their normal vehicle controls.
-- VR Settings now keeps separate Right and Left hand Left/Right, Down/Up, and
-  Back/Forward alignment sliders as permanent player options. The accepted
-  defaults are right `(-7,+4,-5)` cm and left `(-2,+6,-2)` cm, and a same-page
-  hand-only reset restores them without resetting unrelated settings.
-- Consolidated the three 3D crosshair mode selectors, color, and opacity onto
-  one Controls page. The vacated VR Settings row now owns Menu Pointer
-  Smoothing.
-- Reduced the Right B reload/recenter hold from 2.5 seconds to 2 seconds;
-  reload still triggers on the initial press and each hold recenters only once.
-- Changed Water SSR from replacing world color to adding a restrained
-  reflection into the pixel's remaining brightness. This preserves foreground
-  tree-card color when BF1942's depth-write-disabled foliage leaves the water
-  receiver mask visible behind it, without adding render passes or resources.
-- Increased the sniper aim-smoothing boundary from 0.40 to 1.5 degrees so
-  runtime pose variation is less likely to bypass stabilization during fine
-  aiming.
-- Doubled land/sea/mounted controller-motion aim sensitivity and its matching
-  per-sample allowance, reducing required hand
-  travel without changing BF1942's native turret controls or tracking-jump
-  safeguards.
-- World color treatment is fused into BFVR's existing final D3D11 composite.
-  It affects both stereo world eyes and the world-drawn 3D crosshair, while
-  native HUD/menu pixels, scopes, Quick Menu, VR Settings, and other separate
-  interface layers retain their original colors.
-- Exact scoped hit feedback now follows the selected **3D Crosshair Color**.
-  BFVR temporarily synchronizes BF1942's native crosshair color while scoped
-  and restores the original flat-game color afterward; scope artwork and
-  saved profile files are unchanged. Owner headset testing confirms the scoped
-  hit marker uses the selected color correctly.
-- The movement and death comfort effects now share one prioritized vignette
-  compositor, so enabling both cannot stack duplicate OpenXR layers.
-- Reorganized VR Settings so both comfort-vignette controls are adjacent on
-  the live-presentation page, while height adjustment, standing calibration,
-  and recentering share a separate physical-calibration page.
-- BFVR's Quick Menu, VR Settings controls, and Back-to-Game button now reuse
-  Battlefield's native highlight, confirm, and cancel menu sounds. Active
-  game/mod menu-sound replacements and the game's normal menu-audio path are
-  preserved; there is no separate BFVR menu-sounds toggle.
-
-### Fixed
-
-- Fixed controller twisting making the visible hand and attached gun swing
-  around a point outside the wrist. Hand rotation now turns the wrist in place;
-  the saved alignment sliders retain deliberate resting-position adjustment
-  without changing aim, firing, projectiles, or the crosshair.
-- Fixed projected soldier and vehicle shadows sometimes losing their stereo
-  correction for an entire launch. Both proven Battlefield terrain-shadow
-  routes are now recognized immediately; the retained compatibility search is
-  restricted to the shared terrain-cell path instead of scanning unrelated
-  blended draws.
-- Reduced animated-soldier CPU overhead from the Hands Only classifier. Mesh
-  template names are now inspected lazily only for proven first-person
-  arm/hand candidates, and repeated classifications are cached. Ordinary world
-  soldiers no longer trigger template-name classification in any Show mode.
-- Corrected Kill Sound delivery in single-player. The identity-only correction
-  did not fix SP because local play does not deliver confirmed kills through
-  the same received-client boundary as remote MP. BFVR now also observes the
-  native local-server score handler, accepts only ordinary kill type 3 by
-  PlayerManager's current player, rejects teamkill type 6, and suppresses an
-  identical cross-source duplicate in listen-server play. Owner testing confirms
-  correct SP and MP playback, teamkill silence, and multikill grouping.
-- Fixed hidden first-person parts incorrectly hiding other soldiers' skinned bodies through a
-  scope. Arm suppression now fails closed during scope activation and scoped
-  world rendering; helmets, attachments, weapons, and full soldier bodies
-  remain visible.
+-Increased left hand grab radius from 12cm to 18cm.
+-Increased scope aim smoothing radius from 0.35 degrees to 1.5 degrees.
+-Doubled controller-motion turret/cannon sensitivity for land vehicles, sea vehicles, and mounted weapons compared to the original implementation and raised its input allowance to BF1942’s native maximum. There is now a sensitivity slider for it as well.
+-Reduced the time it takes to trigger a view recenter when holding the reload button from 2.5 seconds to 2.
+-Added a Show 'hands+arms, hands only, none' setting.
+-Added a death cam comfort vignette effect with independent toggle.
+-Added configurable 3D crosshair colors: White, Red, Blue, Green, Pink, Purple, Orange, and Yellow.
+-Added a 3D crosshair toggle for knives/throwables/gadgets (off, on, hitmarker only).
+-Added an opacity slider for 3D crosshairs.
+-Added mouse cursor smoothing in menus to reduce shakiness.
+-Added Color profiles (Original/Filmic/Vibrant).
+-Added Exposure, Contrast, and Saturation sliders.
+-Added optional Battlefield-style 'kill sound' with toggle (very satisfying!).
+-Added Broadcast messages "Roger," "Negative," and "Go go go!" to the Quick Menu.
+-VR Quick menu, settings menu, and main menu UI now use the same UI sounds BF and its mods do.
+-Added the ability to toggle the native game HUD on/off.
+-Added a toggle to keep the HUD upright or to follow your sideways head tilt.
+-A fix was implemented to allow WMR Headset users using the Oasis driver to play (hopefully!).
+-Fixed the left hand weapon grip/socket positions on the Russian DP, the MP18, Japanese Type5 rifle, Chinese AK47, and Saiga12k.
+-Removed ability for controller motion to move your camera/head view in a non-gunner passenger position in vehicles. You can still turn your view with the right stick. It may still happen in some vehicles, especially in mods.
+-Fixed ground shadow rendering for vehicles and soldiers so that they now render correctly.
+-Slightly improved the way foliage between you and the water renders with SSR Water enabled.
+-Potential improvement in performance when looking in the direction of large groups of soldiers.
+-Redid the arm IK. Elbows should now be far less likely to flail wildly in random directions.
+-Attempted to align the hands with the controllers better, but I admit it is inconsistent weapon to weapon. I have also added some sliders that allow you to align them to your liking as well.
+-Fixed an offset in the wrists that would cause the ingame hands to swing out of alignment when you twisted your controllers.
+-Fixed a bug that would leave your weapon/arms out of alignment when landing after a paradrop.
+-Changed the relationship between head tilt and controller tilt when it comes to scoped weapon views. It should feel more natural now.
+-Fixed an ambient occlusion rendering artifact that created a visible box-shaped brightness cutoff across floors, walls, and ceilings. AO now renders consistently across the full view.
 
 ## [1.0.1] - 2026-08-11
 
