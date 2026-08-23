@@ -59,7 +59,7 @@ Name: "{group}\BFVR User Guide"; Filename: "{app}\docs\USER_GUIDE.md"
 Name: "{autodesktop}\BFVR"; Filename: "{app}\BFVR.exe"; WorkingDir: "{app}"; Tasks: desktopicon
 
 [Run]
-Filename: "{app}\BFVR.exe"; Description: "Start BFVR"; WorkingDir: "{app}"; Flags: postinstall nowait skipifsilent unchecked
+Filename: "{app}"; Description: "Open the BFVR folder"; Flags: postinstall nowait skipifsilent unchecked shellexec
 
 [UninstallDelete]
 Type: files; Name: "{app}\loader.log"
