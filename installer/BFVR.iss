@@ -67,9 +67,101 @@ Type: files; Name: "{app}\BFVRPresenter-*.log"
 Type: filesandordirs; Name: "{app}\logs"
 
 [Code]
+const
+  BfvrUninstallRegistryKey =
+    'Software\Microsoft\Windows\CurrentVersion\Uninstall\{1C2646DE-4BFD-4491-B102-7A40AFB0953F}_is1';
+
+var
+  ExistingBfvrDetected: Boolean;
+  ExistingBfvrDirectory: String;
+  ExistingBfvrVersion: String;
+
 function IsGameRoot(const Candidate: String): Boolean;
 begin
   Result := FileExists(AddBackslash(Candidate) + 'BF1942.exe');
+end;
+
+function ReadExistingBfvrFromRegistry(
+  const RootKey: Integer;
+  var InstallDirectory: String;
+  var InstalledVersion: String): Boolean;
+var
+  Candidate: String;
+begin
+  Result := False;
+  if not RegQueryStringValue(
+           RootKey,
+           BfvrUninstallRegistryKey,
+           'InstallLocation',
+           Candidate) then
+    exit;
+
+  Candidate := RemoveBackslashUnlessRoot(Candidate);
+  if (CompareText(ExtractFileName(Candidate), 'BFVR') <> 0) or
+     (not FileExists(AddBackslash(Candidate) + 'BFVR.exe')) or
+     (not IsGameRoot(ExtractFileDir(Candidate))) then
+    exit;
+
+  InstallDirectory := Candidate;
+  if not RegQueryStringValue(
+           RootKey,
+           BfvrUninstallRegistryKey,
+           'DisplayVersion',
+           InstalledVersion) then
+    InstalledVersion := '';
+  Result := True;
+end;
+
+function FindExistingBfvrInstall(
+  var InstallDirectory: String;
+  var InstalledVersion: String): Boolean;
+begin
+  Result := ReadExistingBfvrFromRegistry(
+    HKCU32, InstallDirectory, InstalledVersion);
+  if Result then
+    exit;
+
+  Result := ReadExistingBfvrFromRegistry(
+    HKLM32, InstallDirectory, InstalledVersion);
+  if Result then
+    exit;
+
+  Result := ReadExistingBfvrFromRegistry(
+    HKCU64, InstallDirectory, InstalledVersion);
+  if Result then
+    exit;
+
+  Result := ReadExistingBfvrFromRegistry(
+    HKLM64, InstallDirectory, InstalledVersion);
+end;
+
+procedure InitializeWizard();
+var
+  ExistingVersionDescription: String;
+begin
+  ExistingBfvrDirectory := '';
+  ExistingBfvrVersion := '';
+  ExistingBfvrDetected := FindExistingBfvrInstall(
+    ExistingBfvrDirectory,
+    ExistingBfvrVersion);
+  if not ExistingBfvrDetected then
+    exit;
+
+  WizardForm.DirEdit.Text := ExistingBfvrDirectory;
+  Log(
+    'Detected existing BFVR installation for in-place update: version=' +
+    ExistingBfvrVersion + ' directory=' + ExistingBfvrDirectory);
+  if ExistingBfvrVersion = '' then
+    ExistingVersionDescription := 'an existing BFVR installation'
+  else
+    ExistingVersionDescription := 'BFVR v' + ExistingBfvrVersion;
+
+  WizardForm.WelcomeLabel2.Caption :=
+    WizardForm.WelcomeLabel2.Caption + #13#10 + #13#10 +
+    'Setup detected ' + ExistingVersionDescription + ' at:' + #13#10 +
+    ExistingBfvrDirectory + #13#10 + #13#10 +
+    'BFVR v{#AppVersion} will be installed over it. Program files and guides ' +
+    'will be updated, while UserConfig.txt and its saved settings will be preserved.';
 end;
 
 procedure ShowBf42PlusPlusWarning(const BundledProxyPresent: Boolean);
