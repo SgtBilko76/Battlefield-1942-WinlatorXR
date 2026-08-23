@@ -5,7 +5,8 @@ This guide assumes no modding or programming experience.
 ## Before installing
 
 1. Make sure ordinary Battlefield 1942 starts successfully without BFVR.
-2. Install BF42++ as described below.
+2. Check the BF42++ section below. Do not reinstall BF42++ if you use either
+   recommended MoonGamers package; both already include it.
 3. Close Battlefield 1942 and any older BFVR programs.
 4. Connect your headset and make sure its normal PC VR software works.
 
@@ -25,19 +26,32 @@ the instructions below.
 
 Recommended BF1942 Versions (either MOONGAMERS one should work): https://steamcommunity.com/sharedfiles/filedetails/?id=2721068159
 
-## Install BF42++ first
+**Important:** Both the MoonGamers Vulkan and MoonGamers dgVoodoo packages
+already include BF42++ 2.0 as `dsound.dll`. They do not need to contain
+`bf42++.exe`; that executable belongs to the separate standalone BF42++
+distribution. If you use either MoonGamers package, skip the standalone BF42++
+installation and continue to **Install with the setup program** below.
+
+## Check BF42++ before installing another copy
 
 BFVR currently requires BF42++ to keep Battlefield 1942 in the same working
 game process when a map starts. BF42++ is maintained separately and is not
-included in the BFVR installer.
+included in the BFVR installer. It is, however, already included with both
+recommended MoonGamers game packages.
 
 First look in the folder containing `BF1942.exe`:
 
-- If it already contains `dsound.dll`, the game package may already include a
-  BF42++ proxy. Do not add another BF42++ copy yet. Install BFVR and let its
-  launcher inspect that file safely.
-- If it does not contain a bundled BF42++ proxy, install the official package
-  as described below.
+- **MoonGamers Vulkan or dgVoodoo:** Keep the existing `dsound.dll`. Do not
+  download, extract, or run the standalone BF42++ package. Install BFVR and
+  launch `BFVR.exe`.
+- **Another game package with `dsound.dll`:** It may already include a BF42++
+  proxy. Do not add another copy yet. Install BFVR and let its launcher inspect
+  the file safely.
+- **An installation without bundled BF42++:** Install the official standalone
+  package using the steps below.
+
+Only follow these standalone BF42++ steps when the game package does not
+already include BF42++ and BFVR reports that BF42++ is missing:
 
 1. Download BF42++ 2.0 RC6, or a newer compatible release, from the
    [official BF42++ page](https://www.moddb.com/games/battlefield-1942/addons/bf42plusplus-v2-0-rc6).
@@ -57,10 +71,16 @@ its abandoned updater is unsafe.
 
 If both a recognized bundled BF42++ `dsound.dll` and a separately copied
 `bf42++.dll` are present, BFVR 1.0.2 prioritizes the bundled proxy and does not
-inject the extra DLL. This prevents the duplicate from breaking BFVR, but the
-extra BF42++ files are unnecessary and can make ordinary non-VR troubleshooting
-more confusing. The simplest setup is to keep only the BF42++ form originally
-provided by the game package.
+inject the extra DLL. However, running the separately copied `bf42++.exe` can
+still produce the misleading error "bf42++ is being injected into unsupported
+executable" because the bundled copy has already loaded. The simplest and
+supported setup is to keep only the BF42++ form originally provided by the game
+package.
+
+If standalone BF42++ was accidentally copied into a MoonGamers installation,
+move the added `bf42++.exe`, `bf42++.dll`, and `bf42++BlackScreen.exe` out of
+the game folder. Keep MoonGamers' existing `dsound.dll`, then start VR with
+`BFVR.exe`. The generated `bf42++.ini` file is normal and may be kept.
 
 ## Install with the setup program
 

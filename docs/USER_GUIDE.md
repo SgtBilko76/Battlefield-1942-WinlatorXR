@@ -118,16 +118,34 @@ fresh file containing the release defaults on the next start.
 
 ### BFVR says BF42++ is required
 
-If the game package does not already contain a BF42++ `dsound.dll` proxy,
-download BF42++ separately and install it beside `BF1942.exe` using the
-official package with its original filenames. See the BF42++ section of the
-[Installation Guide](INSTALLATION.md). For VR, start `BFVR.exe`; it selects
-one usable BF42++ loading path before loading BFVR into Battlefield 1942.
+Both recommended MoonGamers packages already include BF42++ 2.0 as
+`dsound.dll`. This applies to both the Vulkan and dgVoodoo variants. Do not
+install standalone BF42++ on either one, and do not expect them to contain
+`bf42++.exe`. Install BFVR and start `BFVR.exe`.
+
+For a different game package, download BF42++ separately only if the folder
+does not already contain a BF42++ proxy and BFVR reports that BF42++ is
+missing. Install the official package beside `BF1942.exe` using its original
+filenames. See the BF42++ section of the [Installation Guide](INSTALLATION.md).
 
 Do not combine a bundled BF42++ `dsound.dll` with a second copied
 `bf42++.dll`. BFVR recognizes a bundled BF42++ proxy and uses that one directly
 to avoid loading BF42++ twice. If both are already present, BFVR 1.0.2 ignores
-the extra `bf42++.dll` for that launch, so the duplicate should not break BFVR.
+the extra `bf42++.dll` when starting VR, but the separate `bf42++.exe` can
+still fail when launched directly.
+
+### BF42++ says the executable is unsupported
+
+The message "bf42++ is being injected into unsupported executable" can appear
+when standalone BF42++ was installed over a MoonGamers package that already
+contains BF42++ as `dsound.dll`. In this case the message usually describes a
+duplicate BF42++ injection attempt, not an unsupported MoonGamers
+`BF1942.exe`.
+
+Move the separately added `bf42++.exe`, `bf42++.dll`, and
+`bf42++BlackScreen.exe` out of the Battlefield 1942 folder. Do not remove the
+MoonGamers `dsound.dll`. The `bf42++.ini` file is expected and may remain.
+Start the game in VR using `BFVR.exe`, not `bf42++.exe`.
 
 If BFVR reports obsolete BF42Plus 1.3.4, remove that old `dsound.dll` and
 install current BF42++ from its official page. That warning is a security
