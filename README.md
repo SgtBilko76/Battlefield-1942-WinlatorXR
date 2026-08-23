@@ -44,6 +44,8 @@ Battlefield 1942 VKHD installers; until then, install BFVR separately using
 the guide below. 
 
 Recommended BF1942 Versions (either MOONGAMERS one should work): https://steamcommunity.com/sharedfiles/filedetails/?id=2721068159
+## Important: The recommended MoonGamers Vulkan and dgVoodoo versions already include BF42++. Do not install BF42++ again. 
+Simply install BFVR and launch BFVR.exe. Only install BF42++ separately for other BF1942 versions when BFVR reports that it is missing.
 
 ## Installing and playing
 
