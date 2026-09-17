@@ -93,7 +93,8 @@ ULONG STDMETHODCALLTYPE Direct3DDevice8::AddRef()
 	ULONG LastRefCount = ProxyInterface->AddRef();
 
 	// Shaders and state blocks increase ref counter in d3d9 but not in d3d8
-	DWORD ExtraRefs = VertexShaderAndDeclarationCount + PixelShaderHandles.size() + StateBlockTokens.size();
+	DWORD ExtraRefs = VertexShaderAndDeclarationCount + PixelShaderHandles.size() + StateBlockTokens.size() +
+		(BFVRComposeShader != nullptr ? 1 : 0);
 	if (ExtraRefs <= LastRefCount)
 	{
 		LastRefCount = LastRefCount - ExtraRefs;
@@ -110,7 +111,8 @@ ULONG STDMETHODCALLTYPE Direct3DDevice8::Release()
 
 	// Shaders and StateBlocks are destroyed alongside the device that created them in D3D8 but not in D3D9
 	// so we need to Release any remaining shaders or state blocks when the device is released to mirror that behaviour
-	DWORD ExtraRefs = VertexShaderAndDeclarationCount + PixelShaderHandles.size() + StateBlockTokens.size();
+	DWORD ExtraRefs = VertexShaderAndDeclarationCount + PixelShaderHandles.size() + StateBlockTokens.size() +
+		(BFVRComposeShader != nullptr ? 1 : 0);
 	if (ExtraRefs <= LastRefCount)
 	{
 		LastRefCount = LastRefCount - ExtraRefs;
@@ -2514,6 +2516,11 @@ void Direct3DDevice8::ApplyClipPlanes()
 
 void Direct3DDevice8::ReleaseShadersAndStateBlocks()
 {
+	if (BFVRComposeShader != nullptr)
+	{
+		BFVRComposeShader->Release();
+		BFVRComposeShader = nullptr;
+	}
 	while (!PixelShaderHandles.empty())
 	{
 		DWORD Handle = *PixelShaderHandles.begin();

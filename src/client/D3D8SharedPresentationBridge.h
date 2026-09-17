@@ -19,7 +19,11 @@ using D3D8SharedPresentationLogCallback = void (*)(const wchar_t* message);
 enum class D3D8PresentationCompanion
 {
     OpenXR,
-    OfflineTransport
+    OfflineTransport,
+    // Selected automatically instead of OpenXR when BFVR runs under
+    // WinlatorXR on a standalone headset: no x64 companion process; the
+    // bridge answers the handshake in-process and composes side by side.
+    WinlatorXR
 };
 
 struct D3D8RuntimeView
@@ -166,6 +170,17 @@ public:
     bool WaitForPresentation(LONG sequence, DWORD timeoutMs);
     void PrepareForResourceRelease();
     void Shutdown();
+
+    // True when the active companion needs the stereo frame completed and
+    // composed into the back buffer before the native Present (WinlatorXR).
+    [[nodiscard]] bool ComposesBeforePresent() const noexcept;
+    void ComposeBeforePresent(void* d3d8Device);
+    // Tells the WinlatorXR companion whether the frame about to be published
+    // drew world geometry (UI-only frames are shown on the virtual screen).
+    void SetNextFrameHasWorld(bool hasWorld) noexcept;
+    // Eye the frame for this request should render (alternate-eye
+    // presentation), or -1 to render both eyes.
+    [[nodiscard]] int ActiveEyeForRequest(LONG sequence) const noexcept;
 
     [[nodiscard]] bool UsesGpuSharedTargets() const noexcept;
     [[nodiscard]] bool WaterReflectionsRequested() const noexcept;

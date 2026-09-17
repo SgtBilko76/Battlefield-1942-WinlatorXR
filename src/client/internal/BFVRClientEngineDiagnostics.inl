@@ -920,6 +920,50 @@ void ArmCameraObservationBreakpoints()
     AppendLog(L"Armed passive BFPlayer +0x68 setter breakpoint at %p and vehicle/camera transaction breakpoint at %p on thread %lu; retaining up to %ld samples of each for 90 seconds.", g_cameraSetterBreakpoint.setterTarget, g_cameraSetterBreakpoint.vehicleTransitionTarget, g_cameraSetterBreakpoint.threadId, kCameraSetterMaximumSamples);
 }
 
+// Set when CreateDevice is observed through the vtable hook instead of CPU
+// debug registers (WinlatorXR: the headset's x86 emulation does not trigger
+// hardware breakpoints). The hook then publishes the same lifecycle record.
+bool g_softwareDeviceLifecycle = false;
+
+void PublishSoftwareDeviceLifecycle(
+    void* device,
+    const D3DPresentParameters* presentation)
+{
+    auto** const deviceVtable = *reinterpret_cast<void***>(device);
+    if (deviceVtable == nullptr ||
+        deviceVtable[kDirect3DDevice8PresentSlot] == nullptr ||
+        presentation == nullptr)
+    {
+        AppendLog(L"WinlatorXR: CreateDevice returned a device without a usable vtable; stereo presentation cannot start.");
+        return;
+    }
+    g_createDeviceBreakpoint.threadId = GetCurrentThreadId();
+    g_createDeviceBreakpoint.target = reinterpret_cast<void*>(g_originalCreateDevice);
+    g_createDeviceBreakpoint.presentation = *presentation;
+    g_createDeviceBreakpoint.presentationReadable = TRUE;
+    g_createDeviceBreakpoint.stackReadable = TRUE;
+    g_createDeviceBreakpoint.device = device;
+    g_createDeviceBreakpoint.resetTarget = deviceVtable[kDirect3DDevice8ResetSlot];
+    g_createDeviceBreakpoint.presentTarget = deviceVtable[kDirect3DDevice8PresentSlot];
+    g_createDeviceBreakpoint.beginSceneTarget = deviceVtable[kDirect3DDevice8BeginSceneSlot];
+    g_createDeviceBreakpoint.endSceneTarget = deviceVtable[kDirect3DDevice8EndSceneSlot];
+    g_createDeviceBreakpoint.clearTarget = deviceVtable[kDirect3DDevice8ClearSlot];
+    g_createDeviceBreakpoint.setTransformTarget = deviceVtable[kDirect3DDevice8SetTransformSlot];
+    g_createDeviceBreakpoint.setRenderTargetTarget = deviceVtable[kDirect3DDevice8SetRenderTargetSlot];
+    // The stereo probe hooks Present itself and only acts on this thread, so
+    // the device and its owning thread are the proof the presentation needs.
+    g_createDeviceBreakpoint.presentObserved = TRUE;
+    MemoryBarrier();
+    InterlockedExchange(&g_createDeviceBreakpoint.stage, 4);
+    AppendLog(
+        L"WinlatorXR: published the D3D8 device lifecycle from the CreateDevice vtable hook: device=%p thread=%lu present=%p size=%ux%u.",
+        device,
+        g_createDeviceBreakpoint.threadId,
+        g_createDeviceBreakpoint.presentTarget,
+        presentation->backBufferWidth,
+        presentation->backBufferHeight);
+}
+
 HRESULT WINAPI HookCreateDevice(
     void* direct3D,
     UINT adapter,
@@ -951,6 +995,14 @@ HRESULT WINAPI HookCreateDevice(
             static_cast<double>(limiterBefore.previousValue));
     }
 
+    // Keep the game's requested parameters; the translator may rewrite them.
+    D3DPresentParameters requestedPresentation = {};
+    const bool haveRequestedPresentation = presentationParameters != nullptr;
+    if (haveRequestedPresentation)
+    {
+        requestedPresentation = *presentationParameters;
+    }
+
     const HRESULT result = g_originalCreateDevice(
         direct3D,
         adapter,
@@ -959,6 +1011,15 @@ HRESULT WINAPI HookCreateDevice(
         behaviorFlags,
         presentationParameters,
         returnedDevice);
+
+    if (g_softwareDeviceLifecycle &&
+        SUCCEEDED(result) &&
+        returnedDevice != nullptr &&
+        *returnedDevice != nullptr &&
+        haveRequestedPresentation)
+    {
+        PublishSoftwareDeviceLifecycle(*returnedDevice, &requestedPresentation);
+    }
 
     const bfvr::BF1942FrameLimiterOverrideResult limiterAfter =
         bfvr::ApplyRequestedBF1942FrameLimiterOverride(
@@ -1068,6 +1129,24 @@ void HookCreateDeviceOnDirect3D8(void* direct3D)
     AppendLog(L"Installed CreateDevice observer on Direct3D8 interface %p.", direct3D);
 }
 
+void ArmCreateDeviceSoftwareObserver(void* direct3D)
+{
+    if (direct3D == nullptr)
+    {
+        return;
+    }
+    g_createDeviceBreakpoint = {};
+    g_softwareDeviceLifecycle = true;
+    HookCreateDeviceOnDirect3D8(direct3D);
+    if (g_originalCreateDevice == nullptr)
+    {
+        g_softwareDeviceLifecycle = false;
+        AppendLog(L"WinlatorXR: the CreateDevice vtable observer could not be installed; stereo presentation cannot start.");
+        return;
+    }
+    AppendLog(L"WinlatorXR: observing CreateDevice through a vtable hook because the headset's x86 emulation does not trigger hardware breakpoints.");
+}
+
 void* WINAPI HookDirect3DCreate8(UINT sdkVersion)
 {
     if (g_originalDirect3DCreate8 == nullptr)
@@ -1111,7 +1190,14 @@ void* WINAPI HookDirect3DCreate8(UINT sdkVersion)
             static_cast<double>(limiterAfter.previousValue));
     }
     AppendLog(L"Direct3DCreate8 sdkVersion=%u returned=%p.", sdkVersion, direct3D);
-    ArmCreateDeviceHardwareBreakpoint(direct3D);
+    if (bfvr::winlatorxr::DetectWinlatorXrEnvironment())
+    {
+        ArmCreateDeviceSoftwareObserver(direct3D);
+    }
+    else
+    {
+        ArmCreateDeviceHardwareBreakpoint(direct3D);
+    }
     if constexpr (kEnableCameraTransactionBreakpoints)
     {
         ArmCameraObservationBreakpoints();

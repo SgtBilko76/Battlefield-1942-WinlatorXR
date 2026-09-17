@@ -237,6 +237,59 @@ These are established behaviors, not cleanup opportunities.
 - The runtime selects the HMD adapter and swapchain sizes. Battlefield desktop
   resolution is not a hard-coded eye resolution requirement.
 
+### WinlatorXR (standalone headsets)
+
+- `winlatorxr::DetectWinlatorXrEnvironment()` selects this path: Wine
+  (`ntdll!wine_get_version`) plus a Winlator marker variable
+  (`ANDROID_SYSVSHM_SERVER` or `EVSHIM_SHM_NAME`), or `BFVR_WINLATORXR=1`.
+  `BFVR_WINLATORXR=0` forces the PC path.
+- `D3D8SharedPresentationBridge` then uses the
+  `D3D8PresentationCompanion::WinlatorXR` companion instead of launching
+  `BFVRPresenter.exe`. `WinlatorXrPresentationCompanion` answers the same
+  `ControlBlock` handshake in-process from XrAPI UDP packets (`src/winlatorxr`,
+  receive 7872/7873, send 7278) and publishes rendered/consumed sequences
+  itself. The protocol-v23 layout is unchanged.
+- There is no compositor on the headset. The game-thread `HookPresent`
+  therefore completes the stereo frame *before* the native Present and calls
+  `ComposeBeforePresent`, which uses the d3d8to9 export
+  `BFVRD3D8To9ComposeSideBySide` to draw both eyes, the UI panel and
+  WinlatorXR's frame-sync block (pixel (0,0), R = pose index) into the back
+  buffer. The OpenXR path keeps its post-Present order.
+- `WinlatorXrMenuOverlay` ports the Quick Menu, VR Settings and the "Back to
+  game" button. It reuses the presenter's interaction, settings-session and
+  art classes, dispatches selections like `BFVRPresenter` (keys via
+  `SendInput` while BF1942 is foreground, toggles as the sample's monotonic
+  counters, sounds via the `nativeMenuSound*` counters) and projects the panel
+  quads into the eye views the frame was rendered with. Panels are drawn by
+  the version-2 parameters of the compose export as overlay quads; their
+  dynamic textures are released before every device Reset. While a panel is
+  open, native menu frames are shown head-locked instead of on the virtual
+  screen.
+- The comfort and death-camera vignettes and color grading run as one pixel
+  shader on the world quads (compiled at runtime with `d3dcompiler_47`; the
+  export returns `S_FALSE` if it is unavailable). The kill sound plays through
+  `PlaySound`, so a newer kill restarts it instead of overlapping.
+- `WinlatorXrWatchdog` logs a frame stall of more than 15 s (instruction
+  pointer and code addresses on the stalled thread's stack) and access
+  violations, because no debugger can be attached there without disabling
+  BFVR's CreateDevice hook. Menu art loads 10 s after the first frame; loading
+  it during BF1942's startup once hung the game.
+- Headset notes: side-by-side (`BFVR_WINLATORXR_AER=0`) felt much smoother
+  than alternate-eye rendering. `game.setDetailTexture 0` crashes map loading
+  there (`BF1942.exe+0x2707FE`, terrain texture setup). The container's XR
+  controller key mapping must be empty, or buttons also type keys.
+- Not available there: x64 AO, SSGI, water SSR, bloom, FXAA and the separate
+  scope layer (scope frames show the UI full-screen instead). Menus without a
+  BFVR panel are shown on WinlatorXR's virtual screen. Recenter is B held for
+  2 s, as on PC.
+- The launcher does not require `BFVRPresenter.exe` or the x64 OpenXR loader
+  under WinlatorXR. The WinlatorXR container must not use dgVoodoo (it crashes
+  under Wine); the package's `D3D8.dll` is bypassed by BFVR's redirect anyway.
+- Known package issue on the headset: MoonGamers' "Custom" profile requests
+  hardware 3D sound (`game.setHardware 1`). With WinlatorXR's builtin
+  DirectSound the voice pool can be empty and BF1942 crashes in its voice
+  selection (`BF1942.exe+0x3FBEB2`); use software sound there.
+
 ### Shared rendering and pacing
 
 - Use the translator's current post-Reset presentation dimensions rather than

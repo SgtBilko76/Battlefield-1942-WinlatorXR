@@ -21,6 +21,14 @@ public:
         std::array<void*, shared::kTextureCount>& surfaces,
         std::array<shared::SharedTextureDescription, shared::kTextureCount>&
             descriptions) const;
+    // Creates process-local (non-shared) targets for an in-process presenter.
+    // formats receives the D3D formats actually created: A2B10G10R10 world
+    // and A16B16G16R16F UI targets fall back to A8R8G8B8 when unsupported.
+    bool CreateLocalTargets(
+        void* d3d8Device,
+        const shared::SharedTextureRequirements& requirements,
+        std::array<void*, shared::kTextureCount>& surfaces,
+        std::array<DWORD, shared::kTextureCount>& formats) const;
     bool CreateDepthTargets(
         void* d3d8Device,
         const shared::SharedTextureRequirements& requirements,
@@ -49,6 +57,7 @@ public:
 
 private:
     BFVRD3D8To9CreateSharedRenderTargetFn createSharedTarget_ = nullptr;
+    BFVRD3D8To9CreateLocalRenderTargetFn createLocalTarget_ = nullptr;
     BFVRD3D8To9CreateTextureBackedDepthStencilFn createDepthTarget_ = nullptr;
     BFVRD3D8To9ResolveDepthToSharedTargetFn resolveDepthTarget_ = nullptr;
     BFVRD3D8To9WaitForGpuFn waitForGpu_ = nullptr;

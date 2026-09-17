@@ -14,6 +14,8 @@
 #include "client/WeaponFireProbe.h"
 #include "presenter/D3DSystemRuntime.h"
 #include "settings/UserSettings.h"
+#include "winlatorxr/WinlatorXrClient.h"
+#include "client/WinlatorXrDesktopMouseFilter.h"
 #include "bfvr_runtime_diagnostics.hpp"
 
 #include <MinHook.h>
@@ -1571,6 +1573,11 @@ void AppendLocalCameraTransformSample(const LocalCameraTransformSample& sample)
 #include "client/internal/BFVRClientEngineDiagnostics.inl"
 
 
+void AppendWinlatorXrMessage(const wchar_t* message)
+{
+    AppendLog(L"%s", message);
+}
+
 bool InstallDirect3D8ImportRoute(
     Direct3DCreate8Fn direct3DCreate8Override = nullptr,
     bool observeOverride = false)
@@ -1585,6 +1592,7 @@ bool InstallDirect3D8ImportRoute(
     {
         return false;
     }
+    bfvr::InstallWinlatorXrDesktopMouseFilter(&AppendWinlatorXrMessage);
     if (observeOverride)
     {
         g_originalDirect3DCreate8 = direct3DCreate8Override;

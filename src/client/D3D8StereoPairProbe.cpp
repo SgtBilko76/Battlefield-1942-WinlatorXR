@@ -446,6 +446,9 @@ volatile LONG g_frameLimiterPresentChecks = 0;
 bool g_offlinePresentation = false;
 bool g_runUntilStopped = false;
 bool g_keepOriginalFlatBackbuffer = false;
+// Eye rendered by the current frame for alternate-eye presentation
+// (WinlatorXR); -1 renders both eyes.
+int g_activeEyeOnly = -1;
 bool g_legacyStereoWaterReflection = false;
 bool g_waterReflectionTextureBasisEnabled = false;
 bfvr::D3D8RuntimeDiagnosticLevel g_runtimeDiagnostics =
@@ -1335,6 +1338,12 @@ FrameMirrorResult MirrorDrawIntoFrame(
     {
         for (std::size_t eye = 0; eye < 2; ++eye)
         {
+            if (g_activeEyeOnly >= 0 && static_cast<int>(eye) != g_activeEyeOnly)
+            {
+                // Alternate-eye presentation renders one eye per frame.
+                eyeDrawResults[eye] = S_OK;
+                continue;
+            }
             const D3DMatrix* const replayView = snapshot.waterStereoPrepared
                 ? &snapshot.waterSharedView
                 : eyeViews[eye];
@@ -1674,6 +1683,8 @@ bool CompletePresentationFrame(void* device)
         bfvr::d3d8probe::ReadPerformanceCounter() - requestWaitStarted;
     if (nextReady)
     {
+        g_activeEyeOnly = g_presentationBridge.ActiveEyeForRequest(
+            g_runtimeRenderRequest.sequence);
         PrepareRuntimeRenderRequestPose();
     }
     else if (!g_runUntilStopped)
@@ -1988,6 +1999,8 @@ bool TryBeginFrameCapture(void* device)
                 : kBoundedRenderRequestTimeoutMs));
     if (renderReady && IsPresentationMode())
     {
+        g_activeEyeOnly = g_presentationBridge.ActiveEyeForRequest(
+            g_runtimeRenderRequest.sequence);
         if (!g_presentationTimingStarted)
         {
             g_presentationRun.startedAt = GetTickCount();
@@ -2073,6 +2086,26 @@ HRESULT WINAPI HookPresent(
     }
     const LONG stateAtEntry =
         InterlockedCompareExchange(&g_record.state, 0, 0);
+    // WinlatorXR has no compositor: the finished stereo frame must already be
+    // in the back buffer when the native Present runs, so its completion
+    // moves in front of Present. The OpenXR path keeps its post-Present order.
+    bool completedBeforePresent = false;
+    if (IsPresentationMode() &&
+        g_presentationBridge.ComposesBeforePresent())
+    {
+        if (IsFullFrameMode() &&
+            stateAtEntry == 2 &&
+            device == g_record.device &&
+            GetCurrentThreadId() == g_record.deviceThreadId &&
+            InterlockedCompareExchange(&g_frame.mirroredDraws, 0, 0) != 0)
+        {
+            g_presentationBridge.SetNextFrameHasWorld(
+                InterlockedCompareExchange(&g_frame.worldEyeDraws, 0, 0) != 0);
+            CompletePresentationFrame(device);
+            completedBeforePresent = true;
+        }
+        g_presentationBridge.ComposeBeforePresent(device);
+    }
     const std::int64_t originalPresentStarted =
         bfvr::d3d8probe::ReadPerformanceCounter();
     const HRESULT result = g_originalPresent == nullptr
@@ -2091,7 +2124,11 @@ HRESULT WINAPI HookPresent(
         InterlockedIncrement(&g_presentationRun.originalPresentCalls);
     }
 
-    if (IsFullFrameMode() &&
+    if (completedBeforePresent)
+    {
+        // Completion and the next render request already ran above.
+    }
+    else if (IsFullFrameMode() &&
         stateAtEntry == 2 &&
         SUCCEEDED(result) &&
         device == g_record.device &&

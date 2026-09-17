@@ -23,6 +23,7 @@ namespace bfvr
 bool D3D8To9SharedTextureProducer::Resolve() noexcept
 {
     createSharedTarget_ = nullptr;
+    createLocalTarget_ = nullptr;
     createDepthTarget_ = nullptr;
     resolveDepthTarget_ = nullptr;
     waitForGpu_ = nullptr;
@@ -41,6 +42,12 @@ bool D3D8To9SharedTextureProducer::Resolve() noexcept
             GetProcAddress(
                 translator,
                 "BFVRD3D8To9CreateSharedRenderTarget"));
+    // Optional: only the in-process WinlatorXR presenter needs it.
+    createLocalTarget_ =
+        reinterpret_cast<BFVRD3D8To9CreateLocalRenderTargetFn>(
+            GetProcAddress(
+                translator,
+                "BFVRD3D8To9CreateLocalRenderTarget"));
     createDepthTarget_ =
         reinterpret_cast<BFVRD3D8To9CreateTextureBackedDepthStencilFn>(
             GetProcAddress(
@@ -285,6 +292,72 @@ bool D3D8To9SharedTextureProducer::CreateTargets(
             &deviceDiagnostics_);
     }
     return created;
+}
+
+bool D3D8To9SharedTextureProducer::CreateLocalTargets(
+    void* d3d8Device,
+    const shared::SharedTextureRequirements& requirements,
+    std::array<void*, shared::kTextureCount>& surfaces,
+    std::array<DWORD, shared::kTextureCount>& formats) const
+{
+    surfaces = {};
+    formats = {};
+    lastCreateResult_ = S_OK;
+    smallProbeResult_ = E_PENDING;
+    failedTargetIndex_ = shared::kTextureCount;
+    if (createLocalTarget_ == nullptr || d3d8Device == nullptr)
+    {
+        lastCreateResult_ = E_NOINTERFACE;
+        return false;
+    }
+
+    constexpr DWORD kFallbackFormat = 21; // D3DFMT_A8R8G8B8
+    constexpr std::array<DWORD, shared::kTextureCount> preferredFormats = {
+        kD3DFormatA2B10G10R10,
+        kD3DFormatA2B10G10R10,
+        kD3DFormatA16B16G16R16F};
+    const std::array<UINT, shared::kTextureCount> widths = {
+        requirements.leftWorldWidth,
+        requirements.rightWorldWidth,
+        requirements.uiWidth};
+    const std::array<UINT, shared::kTextureCount> heights = {
+        requirements.leftWorldHeight,
+        requirements.rightWorldHeight,
+        requirements.uiHeight};
+
+    for (std::size_t index = 0; index < surfaces.size(); ++index)
+    {
+        for (const DWORD format : {preferredFormats[index], kFallbackFormat})
+        {
+            lastCreateResult_ = createLocalTarget_(
+                d3d8Device,
+                widths[index],
+                heights[index],
+                format,
+                &surfaces[index]);
+            if (SUCCEEDED(lastCreateResult_) && surfaces[index] != nullptr)
+            {
+                formats[index] = format;
+                break;
+            }
+            surfaces[index] = nullptr;
+        }
+        if (surfaces[index] == nullptr)
+        {
+            failedTargetIndex_ = index;
+            if (SUCCEEDED(lastCreateResult_))
+            {
+                lastCreateResult_ = E_FAIL;
+            }
+            for (void*& surface : surfaces)
+            {
+                ReleaseSurface(surface);
+            }
+            formats = {};
+            return false;
+        }
+    }
+    return true;
 }
 
 bool D3D8To9SharedTextureProducer::WaitForGpu(

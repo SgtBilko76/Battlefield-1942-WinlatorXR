@@ -6,6 +6,10 @@
 #include "bfvr_shared_bridge.hpp"
 #include "d3d8to9.hpp"
 
+#include <d3dcommon.h>
+
+#include <cstring>
+
 namespace
 {
 volatile LONG g_helperDeviceCreations = 0;
@@ -505,4 +509,523 @@ extern "C" HRESULT WINAPI BFVRD3D8To9WaitForGpu(
 		query->Release();
 	translatedDevice->Release();
 	return result;
+}
+
+namespace
+{
+struct ComposeVertex
+{
+	float x;
+	float y;
+	float z;
+	float rhw;
+	float u;
+	float v;
+};
+
+IDirect3DTexture9* TextureOfSurface(void* surface8)
+{
+	if (surface8 == nullptr)
+		return nullptr;
+	auto* const surface =
+		static_cast<Direct3DSurface8*>(static_cast<IDirect3DSurface8*>(surface8));
+	IDirect3DTexture9* texture = nullptr;
+	if (FAILED(surface->GetProxyInterface()->GetContainer(
+			IID_IDirect3DTexture9,
+			reinterpret_cast<void**>(&texture))))
+		return nullptr;
+	return texture;
+}
+
+HRESULT DrawTexturedQuad(
+	IDirect3DDevice9* device,
+	IDirect3DTexture9* texture,
+	float left,
+	float top,
+	float right,
+	float bottom)
+{
+	// -0.5 aligns pre-transformed vertices with D3D9 pixel centres.
+	const ComposeVertex vertices[4] = {
+		{left - 0.5f, top - 0.5f, 0.0f, 1.0f, 0.0f, 0.0f},
+		{right - 0.5f, top - 0.5f, 0.0f, 1.0f, 1.0f, 0.0f},
+		{left - 0.5f, bottom - 0.5f, 0.0f, 1.0f, 0.0f, 1.0f},
+		{right - 0.5f, bottom - 0.5f, 0.0f, 1.0f, 1.0f, 1.0f}};
+	device->SetTexture(0, texture);
+	return device->DrawPrimitiveUP(
+		D3DPT_TRIANGLESTRIP,
+		2,
+		vertices,
+		sizeof(ComposeVertex));
+}
+
+void SetComposeStates(IDirect3DDevice9* device)
+{
+	device->SetVertexShader(nullptr);
+	device->SetPixelShader(nullptr);
+	device->SetFVF(D3DFVF_XYZRHW | D3DFVF_TEX1);
+	device->SetRenderState(D3DRS_ZENABLE, D3DZB_FALSE);
+	device->SetRenderState(D3DRS_ZWRITEENABLE, FALSE);
+	device->SetRenderState(D3DRS_LIGHTING, FALSE);
+	device->SetRenderState(D3DRS_CULLMODE, D3DCULL_NONE);
+	device->SetRenderState(D3DRS_FILLMODE, D3DFILL_SOLID);
+	device->SetRenderState(D3DRS_ALPHATESTENABLE, FALSE);
+	device->SetRenderState(D3DRS_ALPHABLENDENABLE, FALSE);
+	device->SetRenderState(D3DRS_FOGENABLE, FALSE);
+	device->SetRenderState(D3DRS_STENCILENABLE, FALSE);
+	device->SetRenderState(D3DRS_SCISSORTESTENABLE, FALSE);
+	device->SetRenderState(D3DRS_CLIPPLANEENABLE, 0);
+	device->SetRenderState(D3DRS_COLORWRITEENABLE, 0xF);
+	device->SetRenderState(D3DRS_SRGBWRITEENABLE, FALSE);
+	device->SetRenderState(D3DRS_BLENDOP, D3DBLENDOP_ADD);
+	device->SetRenderState(D3DRS_SRCBLEND, D3DBLEND_SRCALPHA);
+	device->SetRenderState(D3DRS_DESTBLEND, D3DBLEND_INVSRCALPHA);
+	device->SetRenderState(D3DRS_SEPARATEALPHABLENDENABLE, FALSE);
+	device->SetTextureStageState(0, D3DTSS_COLOROP, D3DTOP_SELECTARG1);
+	device->SetTextureStageState(0, D3DTSS_COLORARG1, D3DTA_TEXTURE);
+	device->SetTextureStageState(0, D3DTSS_ALPHAOP, D3DTOP_SELECTARG1);
+	device->SetTextureStageState(0, D3DTSS_ALPHAARG1, D3DTA_TEXTURE);
+	device->SetTextureStageState(0, D3DTSS_TEXCOORDINDEX, 0);
+	device->SetTextureStageState(0, D3DTSS_TEXTURETRANSFORMFLAGS, D3DTTFF_DISABLE);
+	device->SetTextureStageState(1, D3DTSS_COLOROP, D3DTOP_DISABLE);
+	device->SetTextureStageState(1, D3DTSS_ALPHAOP, D3DTOP_DISABLE);
+	device->SetSamplerState(0, D3DSAMP_MAGFILTER, D3DTEXF_LINEAR);
+	device->SetSamplerState(0, D3DSAMP_MINFILTER, D3DTEXF_LINEAR);
+	device->SetSamplerState(0, D3DSAMP_MIPFILTER, D3DTEXF_NONE);
+	device->SetSamplerState(0, D3DSAMP_ADDRESSU, D3DTADDRESS_CLAMP);
+	device->SetSamplerState(0, D3DSAMP_ADDRESSV, D3DTADDRESS_CLAMP);
+	device->SetSamplerState(0, D3DSAMP_SRGBTEXTURE, FALSE);
+}
+} // namespace
+
+namespace
+{
+constexpr char kComposeEffectShader[] = R"(
+sampler2D Source : register(s0);
+// movement strength, death blend, grading enabled, unused
+float4 Vignette : register(c0);
+// profile, exposure EV, contrast, saturation
+float4 Grading : register(c1);
+
+float4 main(float2 uv : TEXCOORD0) : COLOR0
+{
+	float3 color = tex2D(Source, uv).rgb;
+	if (Vignette.z > 0.5)
+	{
+		// Same grading as the PC presenter's linear world pass.
+		const float3 lumaWeights = float3(0.2126, 0.7152, 0.0722);
+		float3 lin = pow(max(color, 0.0001), 2.2) * pow(2.0, Grading.y);
+		if (Grading.x > 0.5 && Grading.x < 1.5)
+		{
+			lin = saturate((lin * (2.51 * lin + 0.03)) / (lin * (2.43 * lin + 0.59) + 0.14));
+		}
+		else if (Grading.x >= 1.5)
+		{
+			lin = lin * 1.10 / (1.0 + lin * 0.10);
+			lin = lerp(dot(lin, lumaWeights).xxx, lin, 1.18);
+		}
+		lin = max((lin - 0.18) * (1.0 + Grading.z) + 0.18, 0.0);
+		lin = saturate(lerp(dot(lin, lumaWeights).xxx, lin, 1.0 + Grading.w));
+		color = pow(max(lin, 0.0001), 1.0 / 2.2);
+	}
+	// Same aperture as the PC presenter's comfort vignette layer.
+	float radius = length(uv * 2.0 - 1.0);
+	float strength = saturate(Vignette.x);
+	float movement = smoothstep(lerp(1.50, 0.38, strength), lerp(1.80, 0.68, strength), radius);
+	float death = saturate(Vignette.y);
+	float opacity = lerp(movement, smoothstep(0.16, 0.52, radius), death);
+	float3 tint = float3(0.22, 0.012, 0.008) * death;
+	return float4(lerp(color, tint, opacity), 1.0);
+}
+)";
+
+using D3DCompileFn = HRESULT(WINAPI*)(
+	LPCVOID source,
+	SIZE_T sourceSize,
+	LPCSTR sourceName,
+	const void* defines,
+	void* include,
+	LPCSTR entryPoint,
+	LPCSTR target,
+	UINT flags1,
+	UINT flags2,
+	ID3DBlob** code,
+	ID3DBlob** errors);
+
+// Compiled once per device with the system HLSL compiler (Wine ships one);
+// without it the world is composed unchanged.
+IDirect3DPixelShader9* GetComposeEffectShader(Direct3DDevice8* translatedDevice)
+{
+	if (translatedDevice->BFVRComposeShader != nullptr || translatedDevice->BFVRComposeShaderFailed)
+		return translatedDevice->BFVRComposeShader;
+	translatedDevice->BFVRComposeShaderFailed = true;
+	const HMODULE compiler = LoadLibraryW(L"d3dcompiler_47.dll");
+	const auto compile = compiler == nullptr
+		? nullptr
+		: reinterpret_cast<D3DCompileFn>(GetProcAddress(compiler, "D3DCompile"));
+	if (compile == nullptr)
+		return nullptr;
+	for (const char* profile : {"ps_3_0", "ps_2_0"})
+	{
+		ID3DBlob* code = nullptr;
+		ID3DBlob* errors = nullptr;
+		const HRESULT compiled = compile(
+			kComposeEffectShader,
+			sizeof(kComposeEffectShader) - 1,
+			"BFVRComposeEffect",
+			nullptr,
+			nullptr,
+			"main",
+			profile,
+			0,
+			0,
+			&code,
+			&errors);
+		if (errors != nullptr)
+			errors->Release();
+		if (FAILED(compiled) || code == nullptr)
+		{
+			if (code != nullptr)
+				code->Release();
+			continue;
+		}
+		IDirect3DPixelShader9* shader = nullptr;
+		const HRESULT created = translatedDevice->GetProxyInterface()->CreatePixelShader(
+			static_cast<const DWORD*>(code->GetBufferPointer()),
+			&shader);
+		code->Release();
+		if (SUCCEEDED(created) && shader != nullptr)
+		{
+			translatedDevice->BFVRComposeShader = shader;
+			translatedDevice->BFVRComposeShaderFailed = false;
+			return shader;
+		}
+	}
+	return nullptr;
+}
+
+bool IsNonZero(float value)
+{
+	return value > 0.0001f || value < -0.0001f;
+}
+
+bool HasColorGrading(const BFVRD3D8To9SideBySideParamsV2* params)
+{
+	return params->colorProfile > 0.5f || IsNonZero(params->colorExposureEv) ||
+		IsNonZero(params->colorContrast) || IsNonZero(params->colorSaturation);
+}
+
+bool HasWorldEffects(const BFVRD3D8To9SideBySideParamsV2* params)
+{
+	return params != nullptr &&
+		(params->vignetteStrength > 0.001f || params->vignetteDeathBlend > 0.001f ||
+		 HasColorGrading(params));
+}
+} // namespace
+
+extern "C" HRESULT WINAPI BFVRD3D8To9ComposeSideBySide(
+	void* opaqueDevice,
+	void* leftSurface8,
+	void* rightSurface8,
+	void* uiSurface8,
+	const BFVRD3D8To9SideBySideParams* params)
+{
+	if (params == nullptr ||
+		params->size < sizeof(BFVRD3D8To9SideBySideParams) ||
+		(params->version != BFVR_D3D8TO9_SIDE_BY_SIDE_VERSION &&
+		 params->version != BFVR_D3D8TO9_SIDE_BY_SIDE_VERSION_OVERLAYS))
+		return E_INVALIDARG;
+	const BFVRD3D8To9SideBySideParamsV2* const overlayParams =
+		params->version == BFVR_D3D8TO9_SIDE_BY_SIDE_VERSION_OVERLAYS &&
+			params->size >= sizeof(BFVRD3D8To9SideBySideParamsV2)
+		? reinterpret_cast<const BFVRD3D8To9SideBySideParamsV2*>(params)
+		: nullptr;
+
+	Direct3DDevice8* translatedDevice = nullptr;
+	HRESULT result = ValidateTranslatedDevice(opaqueDevice, &translatedDevice);
+	if (FAILED(result))
+		return result;
+	IDirect3DDevice9* const device = translatedDevice->GetProxyInterface();
+
+	IDirect3DTexture9* leftTexture = nullptr;
+	IDirect3DTexture9* rightTexture = nullptr;
+	IDirect3DTexture9* uiTexture = nullptr;
+	const bool monoUi = (params->flags & BFVR_D3D8TO9_SIDE_BY_SIDE_MONO_UI) != 0;
+	const bool singleEye = (params->flags & BFVR_D3D8TO9_SIDE_BY_SIDE_SINGLE_EYE) != 0;
+	if (!monoUi && (params->flags & BFVR_D3D8TO9_SIDE_BY_SIDE_WORLD) != 0)
+	{
+		leftTexture = TextureOfSurface(leftSurface8);
+		if (!singleEye)
+			rightTexture = TextureOfSurface(rightSurface8);
+	}
+	if ((params->flags & BFVR_D3D8TO9_SIDE_BY_SIDE_UI) != 0)
+		uiTexture = TextureOfSurface(uiSurface8);
+
+	IDirect3DSurface9* backBuffer = nullptr;
+	IDirect3DSurface9* priorTarget = nullptr;
+	IDirect3DSurface9* priorDepth = nullptr;
+	IDirect3DStateBlock9* savedState = nullptr;
+	D3DSURFACE_DESC description = {};
+	bool effectsUnavailable = false;
+
+	result = device->GetBackBuffer(0, 0, D3DBACKBUFFER_TYPE_MONO, &backBuffer);
+	if (SUCCEEDED(result))
+		result = backBuffer->GetDesc(&description);
+	if (SUCCEEDED(result))
+		result = device->CreateStateBlock(D3DSBT_ALL, &savedState);
+	if (SUCCEEDED(result))
+		result = device->GetRenderTarget(0, &priorTarget);
+	if (SUCCEEDED(result))
+	{
+		// A device without a depth-stencil surface is valid.
+		device->GetDepthStencilSurface(&priorDepth);
+		result = device->SetRenderTarget(0, backBuffer);
+	}
+	if (SUCCEEDED(result))
+	{
+		device->SetDepthStencilSurface(nullptr);
+		const float width = static_cast<float>(description.Width);
+		const float height = static_cast<float>(description.Height);
+		const float halfWidth = static_cast<float>(description.Width / 2);
+		D3DVIEWPORT9 viewport = {0, 0, description.Width, description.Height, 0.0f, 1.0f};
+		device->SetViewport(&viewport);
+		const bool sceneStarted = SUCCEEDED(device->BeginScene());
+		device->Clear(0, nullptr, D3DCLEAR_TARGET, D3DCOLOR_XRGB(0, 0, 0), 1.0f, 0);
+		SetComposeStates(device);
+
+		const bool effectsRequested =
+			(leftTexture != nullptr || rightTexture != nullptr) && HasWorldEffects(overlayParams);
+		IDirect3DPixelShader9* const effectShader =
+			effectsRequested ? GetComposeEffectShader(translatedDevice) : nullptr;
+		effectsUnavailable = effectsRequested && effectShader == nullptr;
+		if (effectShader != nullptr)
+		{
+			const float constants[8] = {
+				overlayParams->vignetteStrength,
+				overlayParams->vignetteDeathBlend,
+				HasColorGrading(overlayParams) ? 1.0f : 0.0f,
+				0.0f,
+				overlayParams->colorProfile,
+				overlayParams->colorExposureEv,
+				overlayParams->colorContrast,
+				overlayParams->colorSaturation};
+			device->SetPixelShader(effectShader);
+			device->SetPixelShaderConstantF(0, constants, 2);
+		}
+		if (leftTexture != nullptr)
+			DrawTexturedQuad(device, leftTexture, 0.0f, 0.0f, singleEye ? width : halfWidth, height);
+		if (rightTexture != nullptr)
+			DrawTexturedQuad(device, rightTexture, halfWidth, 0.0f, width, height);
+		if (effectShader != nullptr)
+			device->SetPixelShader(nullptr);
+
+		if (uiTexture != nullptr)
+		{
+			float scale = params->uiScale;
+			if (!(scale > 0.05f && scale <= 1.0f))
+				scale = 1.0f;
+			const bool fullWidthUi = monoUi || singleEye;
+			const float regionWidth = fullWidthUi ? width : halfWidth;
+			const int regions = fullWidthUi ? 1 : 2;
+			const float panelWidth = regionWidth * scale;
+			const float panelHeight = height * scale;
+			device->SetRenderState(D3DRS_ALPHABLENDENABLE, TRUE);
+			for (int eye = 0; eye < regions; ++eye)
+			{
+				const float centerX = regionWidth * (static_cast<float>(eye) + 0.5f);
+				const float centerY = height * 0.5f;
+				DrawTexturedQuad(
+					device,
+					uiTexture,
+					centerX - panelWidth * 0.5f,
+					centerY - panelHeight * 0.5f,
+					centerX + panelWidth * 0.5f,
+					centerY + panelHeight * 0.5f);
+			}
+			device->SetRenderState(D3DRS_ALPHABLENDENABLE, FALSE);
+		}
+
+		if (overlayParams != nullptr && overlayParams->overlayCount != 0)
+		{
+			// BFVR panel art is premultiplied BGRA.
+			device->SetRenderState(D3DRS_ALPHABLENDENABLE, TRUE);
+			device->SetRenderState(D3DRS_SRCBLEND, D3DBLEND_ONE);
+			device->SetRenderState(D3DRS_DESTBLEND, D3DBLEND_INVSRCALPHA);
+			const UINT count = overlayParams->overlayCount < BFVR_D3D8TO9_MAX_OVERLAY_QUADS
+				? overlayParams->overlayCount
+				: BFVR_D3D8TO9_MAX_OVERLAY_QUADS;
+			for (UINT index = 0; index < count; ++index)
+			{
+				const BFVRD3D8To9OverlayQuad& quad = overlayParams->overlays[index];
+				if (quad.texture == nullptr)
+					continue;
+				BFVRD3D8To9OverlayVertex vertices[4] = {};
+				for (int corner = 0; corner < 4; ++corner)
+				{
+					vertices[corner] = quad.vertices[corner];
+					vertices[corner].x = vertices[corner].x * width - 0.5f;
+					vertices[corner].y = vertices[corner].y * height - 0.5f;
+				}
+				device->SetTexture(0, static_cast<IDirect3DTexture9*>(quad.texture));
+				device->DrawPrimitiveUP(
+					D3DPT_TRIANGLESTRIP,
+					2,
+					vertices,
+					sizeof(BFVRD3D8To9OverlayVertex));
+			}
+			device->SetRenderState(D3DRS_ALPHABLENDENABLE, FALSE);
+			device->SetRenderState(D3DRS_SRCBLEND, D3DBLEND_SRCALPHA);
+		}
+
+		device->SetTexture(0, nullptr);
+		if (params->syncColor != 0)
+		{
+			// A block (not a single pixel) survives scaling to the X screen.
+			const D3DRECT syncRect = {0, 0, 8, 8};
+			device->Clear(1, &syncRect, D3DCLEAR_TARGET, params->syncColor, 1.0f, 0);
+		}
+		if (sceneStarted)
+			device->EndScene();
+
+		device->SetRenderTarget(0, priorTarget);
+		device->SetDepthStencilSurface(priorDepth);
+		savedState->Apply();
+	}
+
+	if (savedState != nullptr)
+		savedState->Release();
+	if (priorDepth != nullptr)
+		priorDepth->Release();
+	if (priorTarget != nullptr)
+		priorTarget->Release();
+	if (backBuffer != nullptr)
+		backBuffer->Release();
+	if (uiTexture != nullptr)
+		uiTexture->Release();
+	if (rightTexture != nullptr)
+		rightTexture->Release();
+	if (leftTexture != nullptr)
+		leftTexture->Release();
+	translatedDevice->Release();
+	// S_FALSE: composed, but the requested world effects were skipped.
+	return SUCCEEDED(result) && effectsUnavailable ? S_FALSE : result;
+}
+
+extern "C" HRESULT WINAPI BFVRD3D8To9CreateLocalRenderTarget(
+	void* opaqueDevice,
+	UINT width,
+	UINT height,
+	DWORD d3dFormat,
+	void** d3d8Surface)
+{
+	if (d3d8Surface == nullptr || width == 0 || height == 0)
+		return D3DERR_INVALIDCALL;
+	*d3d8Surface = nullptr;
+
+	Direct3DDevice8* translatedDevice = nullptr;
+	HRESULT result = ValidateTranslatedDevice(opaqueDevice, &translatedDevice);
+	if (FAILED(result))
+		return result;
+
+	IDirect3DTexture9* texture = nullptr;
+	result = translatedDevice->GetProxyInterface()->CreateTexture(
+		width,
+		height,
+		1,
+		D3DUSAGE_RENDERTARGET,
+		static_cast<D3DFORMAT>(d3dFormat),
+		D3DPOOL_DEFAULT,
+		&texture,
+		nullptr);
+	if (FAILED(result) || texture == nullptr)
+	{
+		translatedDevice->Release();
+		return FAILED(result) ? result : E_FAIL;
+	}
+
+	IDirect3DSurface9* surface9 = nullptr;
+	result = texture->GetSurfaceLevel(0, &surface9);
+	texture->Release();
+	if (FAILED(result) || surface9 == nullptr)
+	{
+		translatedDevice->Release();
+		return FAILED(result) ? result : E_FAIL;
+	}
+
+	auto* const surface8 =
+		translatedDevice->ProxyAddressLookupTable
+			->FindAddress<Direct3DSurface8>(surface9);
+	translatedDevice->Release();
+	if (surface8 == nullptr)
+	{
+		surface9->Release();
+		return E_OUTOFMEMORY;
+	}
+	*d3d8Surface = static_cast<IDirect3DSurface8*>(surface8);
+	return D3D_OK;
+}
+
+extern "C" HRESULT WINAPI BFVRD3D8To9CreateOverlayTexture(
+	void* opaqueDevice,
+	UINT width,
+	UINT height,
+	void** overlayTexture)
+{
+	if (overlayTexture == nullptr || width == 0 || height == 0)
+		return D3DERR_INVALIDCALL;
+	*overlayTexture = nullptr;
+	Direct3DDevice8* translatedDevice = nullptr;
+	HRESULT result = ValidateTranslatedDevice(opaqueDevice, &translatedDevice);
+	if (FAILED(result))
+		return result;
+	IDirect3DTexture9* texture = nullptr;
+	result = translatedDevice->GetProxyInterface()->CreateTexture(
+		width,
+		height,
+		1,
+		D3DUSAGE_DYNAMIC,
+		D3DFMT_A8R8G8B8,
+		D3DPOOL_DEFAULT,
+		&texture,
+		nullptr);
+	translatedDevice->Release();
+	if (FAILED(result) || texture == nullptr)
+		return FAILED(result) ? result : E_FAIL;
+	*overlayTexture = texture;
+	return D3D_OK;
+}
+
+extern "C" HRESULT WINAPI BFVRD3D8To9UpdateOverlayTexture(
+	void* overlayTexture,
+	const DWORD* pixels,
+	UINT width,
+	UINT height)
+{
+	if (overlayTexture == nullptr || pixels == nullptr)
+		return D3DERR_INVALIDCALL;
+	auto* const texture = static_cast<IDirect3DTexture9*>(overlayTexture);
+	D3DSURFACE_DESC description = {};
+	HRESULT result = texture->GetLevelDesc(0, &description);
+	if (FAILED(result))
+		return result;
+	if (description.Width != width || description.Height != height)
+		return D3DERR_INVALIDCALL;
+	D3DLOCKED_RECT locked = {};
+	result = texture->LockRect(0, &locked, nullptr, D3DLOCK_DISCARD);
+	if (FAILED(result))
+		return result;
+	for (UINT row = 0; row < height; ++row)
+	{
+		std::memcpy(
+			static_cast<BYTE*>(locked.pBits) + static_cast<size_t>(row) * locked.Pitch,
+			pixels + static_cast<size_t>(row) * width,
+			static_cast<size_t>(width) * sizeof(DWORD));
+	}
+	return texture->UnlockRect(0);
+}
+
+extern "C" void WINAPI BFVRD3D8To9ReleaseOverlayTexture(void* overlayTexture)
+{
+	if (overlayTexture != nullptr)
+		static_cast<IDirect3DTexture9*>(overlayTexture)->Release();
 }

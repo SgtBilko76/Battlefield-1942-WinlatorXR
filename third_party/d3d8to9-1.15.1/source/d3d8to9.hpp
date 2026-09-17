@@ -165,6 +165,11 @@ public:
 
 	AddressLookupTable *ProxyAddressLookupTable;
 
+	// BFVR: effect shader of BFVRD3D8To9ComposeSideBySide, created on first
+	// use and released with the device's other shaders.
+	IDirect3DPixelShader9 *BFVRComposeShader = nullptr;
+	bool BFVRComposeShaderFailed = false;
+
 private:
 	void ApplyClipPlanes();
 	void ReleaseShadersAndStateBlocks();

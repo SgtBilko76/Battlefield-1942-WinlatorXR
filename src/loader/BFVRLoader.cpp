@@ -12,6 +12,7 @@
 
 #include "Bf42PlusPlusCompatibility.h"
 #include "../BFVRVersion.h"
+#include "winlatorxr/WinlatorXrClient.h"
 
 namespace
 {
@@ -1352,13 +1353,19 @@ int wmain(int argc, wchar_t* argv[])
         ParentDirectory(activeClientPath);
     if (options.playerLaunch)
     {
+        // Under WinlatorXR the client presents in-process; the x64 OpenXR
+        // presenter and its loader are neither needed nor runnable there.
+        const bool winlatorXr = bfvr::winlatorxr::DetectWinlatorXrEnvironment();
         const std::wstring requiredPlayerFiles[] = {
             Combine(payloadDirectory, L"BFVRPresenter.exe"),
             Combine(payloadDirectory, L"runtime\\openxr\\win64\\openxr_loader.dll"),
             Combine(payloadDirectory, L"assets\\QM_bg.png"),
             Combine(payloadDirectory, L"assets\\SettingsMenu\\SettingsText.png")};
-        for (const auto& requiredPath : requiredPlayerFiles)
+        for (std::size_t index = winlatorXr ? 2 : 0;
+             index < std::size(requiredPlayerFiles);
+             ++index)
         {
+            const std::wstring& requiredPath = requiredPlayerFiles[index];
             if (!Exists(requiredPath))
             {
                 fwprintf(
@@ -1421,6 +1428,10 @@ int wmain(int argc, wchar_t* argv[])
     }
     std::vector<wchar_t> mutableCommandLine(commandLine.begin(), commandLine.end());
     ResetLoaderLog();
+    if (options.playerLaunch && bfvr::winlatorxr::DetectWinlatorXrEnvironment())
+    {
+        AppendLoaderLog(L"WinlatorXR detected: the client presents side by side in-process; BFVRPresenter.exe is not started.");
+    }
     const std::wstring playerStartMessage =
         std::wstring(L"Starting BFVR ") + bfvr::kVersionString +
         L" with player diagnostics disabled.";
@@ -2104,12 +2115,27 @@ int wmain(int argc, wchar_t* argv[])
         std::vector<DWORD> attachedProcessIds = {processInfo.dwProcessId};
         DWORD handoffSearchStartedAt = 0;
         constexpr DWORD kSuccessorSearchTimeoutMs = 10000;
+        // Under WinlatorXR every process snapshot is an expensive emulated
+        // wineserver round trip; while the game runs, look for a replacement
+        // twice a second instead of every 20 ms.
+        const DWORD aliveSearchIntervalMs =
+            bfvr::winlatorxr::DetectWinlatorXrEnvironment() ? 500 : 0;
+        DWORD lastSearchAt = 0;
         for (;;)
         {
-            const ReplacementProcess successor =
-                FindBf1942Replacement(
+            const DWORD searchNow = GetTickCount();
+            const bool searchDue = handoffSearchStartedAt != 0 ||
+                lastSearchAt == 0 ||
+                searchNow - lastSearchAt >= aliveSearchIntervalMs;
+            if (searchDue)
+            {
+                lastSearchAt = searchNow == 0 ? 1 : searchNow;
+            }
+            const ReplacementProcess successor = searchDue
+                ? FindBf1942Replacement(
                     executablePath,
-                    attachedProcessIds);
+                    attachedProcessIds)
+                : ReplacementProcess{};
             if (successor.handle != nullptr)
             {
                 DWORD successorBf42PlusPlusModuleBase = 0;
@@ -2179,8 +2205,9 @@ int wmain(int argc, wchar_t* argv[])
                 continue;
             }
 
-            const DWORD wait =
-                WaitForSingleObject(processLifetimeHandle, 20);
+            const DWORD wait = WaitForSingleObject(
+                processLifetimeHandle,
+                aliveSearchIntervalMs == 0 ? 20 : aliveSearchIntervalMs);
             if (wait == WAIT_TIMEOUT)
             {
                 handoffSearchStartedAt = 0;

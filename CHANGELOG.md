@@ -3,6 +3,20 @@
 This file records user-visible changes to BFVR. GitHub Release notes should use
 the v1.0.2 section exactly as written below.
 
+## [Unreleased]
+
+### Added
+
+- Experimental standalone Meta Quest support through WinlatorXR (Wine and Box64
+  on the headset). When BFVR detects WinlatorXR it takes head and controller
+  tracking from WinlatorXR's XrAPI and draws both eyes side by side into the
+  game window instead of starting `BFVRPresenter.exe`. Set
+  `BFVR_WINLATORXR=0` or `1` to override detection and
+  `BFVR_WINLATORXR_EYE_SIZE=WIDTHxHEIGHT` to change the per-eye size. The
+  Quick Menu (hold right A), VR Settings, the "Back to game" button, comfort
+  and death-camera vignettes, color profiles and the kill sound also work
+  there. The Windows PC version is unchanged.
+
 ## [1.0.2]
 
 -Increased left hand grab radius from 12cm to 18cm.

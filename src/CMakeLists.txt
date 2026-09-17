@@ -250,6 +250,16 @@ add_library(BFVRClient SHARED
   client/WeaponAimOverlay.cpp
   client/WeaponPoseRuntimeCache.cpp
   client/D3D8SharedPresentationBridge.cpp
+  client/WinlatorXrPresentationCompanion.cpp
+  client/WinlatorXrDesktopMouseFilter.cpp
+  client/WinlatorXrMenuOverlay.cpp
+  client/WinlatorXrWatchdog.cpp
+  client/QuickMenuArt.cpp
+  client/SettingsMenuArt.cpp
+  stereo/SettingsMenuInteraction.cpp
+  openxr/OpenXRControllerShortcutPolicy.cpp
+  winlatorxr/WinlatorXrClient.cpp
+  winlatorxr/WinlatorXrProtocol.cpp
   client/D3D8To9InteropPrimer.cpp
   client/D3D8StateCensus.cpp
   client/D3D8WeaponTransformOwnershipProbe.cpp
@@ -323,6 +333,8 @@ add_library(BFVRStereoMath STATIC
 add_executable(BFVRLoader
   loader/Bf42PlusPlusCompatibility.cpp
   loader/BFVRLoader.cpp
+  winlatorxr/WinlatorXrClient.cpp
+  winlatorxr/WinlatorXrProtocol.cpp
   loader/BFVR.rc
 )
 
@@ -470,6 +482,11 @@ add_executable(BFVROpenXRControllerShortcutTests
   openxr/OpenXRControllerShortcutPolicyTests.cpp
 )
 
+add_executable(BFVRWinlatorXrProtocolTests
+  winlatorxr/WinlatorXrProtocol.cpp
+  winlatorxr/WinlatorXrProtocolTests.cpp
+)
+
 add_executable(BFVROpenXRControllerBindingTests
   openxr/OpenXRControllerBindingPolicy.cpp
   openxr/OpenXRControllerBindingPolicyTests.cpp
@@ -559,7 +576,7 @@ add_executable(BFVRRfaInspect
   tools/RfaInspect.cpp
 )
 
-foreach(target BFVRClient BFVRD3D8To9FlatClient BFVRLoader BFVRBf42PlusPlusCompatibilityTests BFVRFrameLimiterOverrideTests BFVROpenXRProbe BFVRSharedTextureProducerProbe BFVRD3D8To9SharedSurfaceProbe BFVRAmbientOcclusionDepthProbe BFVRStereoMath BFVRStereoMathTests BFVRWaterReflectionTextureBasisTests BFVRProjectedShadowTextureTransformTests BFVRWeaponFireAimMathTests BFVRHandWeaponRecoilMathTests BFVRBFSoldierAttachmentPosePairerTests BFVROffHandSupportPolicyTests BFVRArmPoleVectorMathTests BFVRArmVrPoseMathTests BFVRMainMenuOverlayTests BFVRQuickMenuTests BFVRSettingsMenuTests BFVRUserSettingsTests BFVRUserSettingsSeedWriter BFVROpenXRHapticsTests BFVROpenXRControllerShortcutTests BFVROpenXRControllerBindingTests BFVRVehicleMotionAimMathTests BFVRDirectionalLocomotionTests BFVRComfortVignetteTests BFVRSurfaceVehicleDriveMathTests BFVRAircraftControlMathTests BFVRTrackingAnchorTests BFVRInfantryAuthoritativeAimTests BFVRInfantryPresentationTurnTests BFVRControllerInputCacheTests BFVRMountedCameraMathTests BFVRInfantryCameraMathTests BFVRScopeViewMathTests BFVROpenXRScopeOverlayLayerTests BFVRWorldCrosshairMathTests BFVRUiPointerSmoothingTests BFVRRuntimeDiagnosticsTests BFVRSharedControlChannelTests BFVRKillSoundEventPolicyTests BFVRRfaInspect)
+foreach(target BFVRClient BFVRD3D8To9FlatClient BFVRLoader BFVRBf42PlusPlusCompatibilityTests BFVRFrameLimiterOverrideTests BFVROpenXRProbe BFVRSharedTextureProducerProbe BFVRD3D8To9SharedSurfaceProbe BFVRAmbientOcclusionDepthProbe BFVRStereoMath BFVRStereoMathTests BFVRWaterReflectionTextureBasisTests BFVRProjectedShadowTextureTransformTests BFVRWeaponFireAimMathTests BFVRHandWeaponRecoilMathTests BFVRBFSoldierAttachmentPosePairerTests BFVROffHandSupportPolicyTests BFVRArmPoleVectorMathTests BFVRArmVrPoseMathTests BFVRMainMenuOverlayTests BFVRQuickMenuTests BFVRSettingsMenuTests BFVRUserSettingsTests BFVRUserSettingsSeedWriter BFVROpenXRHapticsTests BFVROpenXRControllerShortcutTests BFVRWinlatorXrProtocolTests BFVROpenXRControllerBindingTests BFVRVehicleMotionAimMathTests BFVRDirectionalLocomotionTests BFVRComfortVignetteTests BFVRSurfaceVehicleDriveMathTests BFVRAircraftControlMathTests BFVRTrackingAnchorTests BFVRInfantryAuthoritativeAimTests BFVRInfantryPresentationTurnTests BFVRControllerInputCacheTests BFVRMountedCameraMathTests BFVRInfantryCameraMathTests BFVRScopeViewMathTests BFVROpenXRScopeOverlayLayerTests BFVRWorldCrosshairMathTests BFVRUiPointerSmoothingTests BFVRRuntimeDiagnosticsTests BFVRSharedControlChannelTests BFVRKillSoundEventPolicyTests BFVRRfaInspect)
   target_compile_definitions(${target} PRIVATE WIN32_LEAN_AND_MEAN NOMINMAX UNICODE _UNICODE)
   set_property(TARGET ${target} PROPERTY MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
   if(MSVC)
@@ -576,9 +593,10 @@ if(MSVC)
 endif()
 
 target_link_libraries(BFVRClient PRIVATE
-  kernel32 advapi32 ole32 user32 windowscodecs)
+  kernel32 advapi32 ole32 gdi32 user32 windowscodecs winmm ws2_32)
 target_link_libraries(BFVRD3D8To9FlatClient PRIVATE kernel32)
-target_link_libraries(BFVRLoader PRIVATE kernel32 bcrypt)
+target_link_libraries(BFVRLoader PRIVATE kernel32 bcrypt ws2_32)
+target_include_directories(BFVRLoader PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}")
 target_link_libraries(BFVRUserSettingsSeedWriter PRIVATE kernel32)
 target_link_libraries(BFVROpenXRProbe PRIVATE
   kernel32 ole32 gdi32 windowscodecs d3d11 dxgi d3dcompiler BFVRStereoMath)
@@ -646,6 +664,8 @@ target_include_directories(BFVROpenXRHapticsTests PRIVATE
   "${CMAKE_CURRENT_SOURCE_DIR}"
   "${BFVR_OPENXR_INCLUDE_DIRECTORY}")
 target_include_directories(BFVROpenXRControllerShortcutTests PRIVATE
+  "${CMAKE_CURRENT_SOURCE_DIR}")
+target_include_directories(BFVRWinlatorXrProtocolTests PRIVATE
   "${CMAKE_CURRENT_SOURCE_DIR}")
 target_include_directories(BFVROpenXRControllerBindingTests PRIVATE
   "${CMAKE_CURRENT_SOURCE_DIR}")
@@ -716,6 +736,9 @@ if(BUILD_TESTING)
   add_test(
     NAME BFVROpenXRControllerShortcutTests
     COMMAND BFVROpenXRControllerShortcutTests)
+  add_test(
+    NAME BFVRWinlatorXrProtocolTests
+    COMMAND BFVRWinlatorXrProtocolTests)
   add_test(
     NAME BFVROpenXRControllerBindingTests
     COMMAND BFVROpenXRControllerBindingTests)

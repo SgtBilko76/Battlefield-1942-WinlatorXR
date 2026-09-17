@@ -11,3 +11,8 @@ EXPORTS
 	BFVRD3D8To9CreateTextureBackedDepthStencil
 	BFVRD3D8To9ResolveDepthToSharedTarget
 	BFVRD3D8To9WaitForGpu
+	BFVRD3D8To9ComposeSideBySide
+	BFVRD3D8To9CreateLocalRenderTarget
+	BFVRD3D8To9CreateOverlayTexture
+	BFVRD3D8To9UpdateOverlayTexture
+	BFVRD3D8To9ReleaseOverlayTexture

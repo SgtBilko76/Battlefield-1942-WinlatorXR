@@ -5,11 +5,13 @@
 #include "client/D3D8To9InteropPrimer.h"
 #include "client/D3D8To9SharedTextureProducer.h"
 #include "client/D3D8StereoProbeRecords.h"
+#include "client/WinlatorXrPresentationCompanion.h"
 #include "client/ScopeViewOverlay.h"
 #include "presenter/SharedControlChannel.h"
 #include "settings/UserSettings.h"
 #include "stereo/ScopeViewMath.h"
 #include "stereo/StereoMath.h"
+#include "winlatorxr/WinlatorXrClient.h"
 
 #include <windows.h>
 
@@ -252,11 +254,24 @@ public:
             return false;
         }
         companion = requestedCompanion;
+        if (companion == D3D8PresentationCompanion::OpenXR &&
+            winlatorxr::DetectWinlatorXrEnvironment())
+        {
+            if (forceCpuTransport)
+            {
+                WriteLog(L"WinlatorXR has no CPU-transport presenter; the launch-time menu bridge stays inactive.");
+                return false;
+            }
+            companion = D3D8PresentationCompanion::WinlatorXR;
+        }
+        const bool winlatorXrCompanion =
+            companion == D3D8PresentationCompanion::WinlatorXR;
         presenterPath = moduleDirectory +
             (companion == D3D8PresentationCompanion::OfflineTransport
                 ? L"\\BFVRSharedTextureConsumerProbe.exe"
                 : L"\\BFVRPresenter.exe");
-        if (GetFileAttributesW(presenterPath.c_str()) == INVALID_FILE_ATTRIBUTES)
+        if (!winlatorXrCompanion &&
+            GetFileAttributesW(presenterPath.c_str()) == INVALID_FILE_ATTRIBUTES)
         {
             WriteLog(
                 L"D3D8 presentation bridge requires its x64 companion beside BFVRClient.dll: %s.",
@@ -280,10 +295,13 @@ public:
         }
         block = channel.Get();
         RegisterControllerHapticTransport(block);
-        ambientOcclusionRequested = ReadAmbientOcclusionRequested();
+        // AO, SSGI and water SSR are x64 presenter effects; WinlatorXR has none.
+        ambientOcclusionRequested =
+            !winlatorXrCompanion && ReadAmbientOcclusionRequested();
         screenSpaceGlobalIlluminationRequested =
-            ReadScreenSpaceGlobalIlluminationRequested();
-        waterReflectionsRequested = ReadWaterReflectionsRequested();
+            !winlatorXrCompanion && ReadScreenSpaceGlobalIlluminationRequested();
+        waterReflectionsRequested =
+            !winlatorXrCompanion && ReadWaterReflectionsRequested();
         block->producerFlags = shared::kProducerFlagRuntimeTimedRender |
             (ambientOcclusionRequested
                 ? shared::kProducerFlagAmbientOcclusionRequested
@@ -295,6 +313,109 @@ public:
                 ? shared::kProducerFlagWaterReflectionsRequested
                 : 0);
 
+        if (winlatorXrCompanion)
+        {
+            if (!winlatorXr.Start(logCallback, moduleDirectory))
+            {
+                shared::PublishState(
+                    &block->producerState,
+                    shared::ProcessState::Failed);
+                Shutdown();
+                return false;
+            }
+            winlatorXr.PublishRequirements(
+                *block,
+                logicalUiWidth,
+                logicalUiHeight);
+        }
+        else if (!LaunchPresenter(moduleDirectory))
+        {
+            return false;
+        }
+
+        runtimeUiWidth = block->requirements.uiWidth;
+        runtimeUiHeight = block->requirements.uiHeight;
+        destinationRequirements =
+            ReadRequirements(*block, logicalUiWidth, logicalUiHeight);
+        if (destinationRequirements.format != DXGI_FORMAT_B8G8R8A8_UNORM &&
+            destinationRequirements.format !=
+                DXGI_FORMAT_B8G8R8A8_UNORM_SRGB)
+        {
+            WriteLog(
+                L"OpenXR game bridge requires BGRA8 UNORM or BGRA8 sRGB transport; runtime selected format %u.",
+                static_cast<unsigned int>(destinationRequirements.format));
+            Shutdown();
+            return false;
+        }
+        requirements =
+            MakeProducerRequirements(destinationRequirements, worldRenderScale);
+        gpuSharedTargets =
+            !forceCpuTransport && gpuProducer.Resolve();
+        if (companion == D3D8PresentationCompanion::OfflineTransport &&
+            !gpuSharedTargets)
+        {
+            WriteLog(
+                L"Offline shared-target control requires the BFVR d3d8to9 bridge ABI.");
+            Shutdown();
+            return false;
+        }
+        if (!gpuSharedTargets && winlatorXrCompanion)
+        {
+            WriteLog(L"WinlatorXR presentation requires the BFVR d3d8to9 GPU-target ABI.");
+            Shutdown();
+            return false;
+        }
+        if (!gpuSharedTargets &&
+            !producer.Initialize(
+                channelName.c_str(),
+                requirements,
+                &Impl::ProducerLogThunk,
+                this))
+        {
+            WriteLog(L"OpenXR game bridge could not create its x86 shared textures.");
+            Shutdown();
+            return false;
+        }
+
+        if (!gpuSharedTargets)
+        {
+            producer.CopyDescriptions(
+                block->textures,
+                shared::kTextureCount);
+            shared::PublishState(
+                &block->producerState,
+                shared::ProcessState::TexturesReady);
+            (void)channel.SignalProducerUpdate();
+            texturesPublished = true;
+        }
+        initialized = true;
+        WriteLog(
+            L"D3D8 presentation bridge is ready: transport=%s synchronization=%s source world=%ux%u/%ux%u at scale %.3f, destination=%ux%u/%ux%u, logical UI=%ux%u, destinationFormat=%u.",
+            gpuSharedTargets
+                ? L"D3D9Ex legacy shared GPU targets"
+                : L"D3D8 readback plus D3D11 upload",
+            channel.HasUpdateEvents()
+                ? L"cross-process events"
+                : L"bounded polling fallback",
+            requirements.leftWorldWidth,
+            requirements.leftWorldHeight,
+            requirements.rightWorldWidth,
+            requirements.rightWorldHeight,
+            worldRenderScale,
+            destinationRequirements.leftWorldWidth,
+            destinationRequirements.leftWorldHeight,
+            destinationRequirements.rightWorldWidth,
+            destinationRequirements.rightWorldHeight,
+            requirements.uiWidth,
+            requirements.uiHeight,
+            static_cast<unsigned int>(requirements.format));
+        return true;
+    }
+
+    // Starts the x64 companion and waits until it has published its runtime
+    // requirements. On failure the bridge has already been shut down.
+    bool LaunchPresenter(const std::wstring& moduleDirectory)
+    {
         const std::wstring presenterLog = moduleDirectory +
             (companion == D3D8PresentationCompanion::OfflineTransport
                 ? L"\\BFVRSharedTextureConsumer-game.log"
@@ -374,77 +495,6 @@ public:
             Shutdown();
             return false;
         }
-
-        runtimeUiWidth = block->requirements.uiWidth;
-        runtimeUiHeight = block->requirements.uiHeight;
-        destinationRequirements =
-            ReadRequirements(*block, logicalUiWidth, logicalUiHeight);
-        if (destinationRequirements.format != DXGI_FORMAT_B8G8R8A8_UNORM &&
-            destinationRequirements.format !=
-                DXGI_FORMAT_B8G8R8A8_UNORM_SRGB)
-        {
-            WriteLog(
-                L"OpenXR game bridge requires BGRA8 UNORM or BGRA8 sRGB transport; runtime selected format %u.",
-                static_cast<unsigned int>(destinationRequirements.format));
-            Shutdown();
-            return false;
-        }
-        requirements =
-            MakeProducerRequirements(destinationRequirements, worldRenderScale);
-        gpuSharedTargets =
-            !forceCpuTransport && gpuProducer.Resolve();
-        if (companion == D3D8PresentationCompanion::OfflineTransport &&
-            !gpuSharedTargets)
-        {
-            WriteLog(
-                L"Offline shared-target control requires the BFVR d3d8to9 bridge ABI.");
-            Shutdown();
-            return false;
-        }
-        if (!gpuSharedTargets &&
-            !producer.Initialize(
-                channelName.c_str(),
-                requirements,
-                &Impl::ProducerLogThunk,
-                this))
-        {
-            WriteLog(L"OpenXR game bridge could not create its x86 shared textures.");
-            Shutdown();
-            return false;
-        }
-
-        if (!gpuSharedTargets)
-        {
-            producer.CopyDescriptions(
-                block->textures,
-                shared::kTextureCount);
-            shared::PublishState(
-                &block->producerState,
-                shared::ProcessState::TexturesReady);
-            (void)channel.SignalProducerUpdate();
-            texturesPublished = true;
-        }
-        initialized = true;
-        WriteLog(
-            L"D3D8 presentation bridge is ready: transport=%s synchronization=%s source world=%ux%u/%ux%u at scale %.3f, destination=%ux%u/%ux%u, logical UI=%ux%u, destinationFormat=%u.",
-            gpuSharedTargets
-                ? L"D3D9Ex legacy shared GPU targets"
-                : L"D3D8 readback plus D3D11 upload",
-            channel.HasUpdateEvents()
-                ? L"cross-process events"
-                : L"bounded polling fallback",
-            requirements.leftWorldWidth,
-            requirements.leftWorldHeight,
-            requirements.rightWorldWidth,
-            requirements.rightWorldHeight,
-            worldRenderScale,
-            destinationRequirements.leftWorldWidth,
-            destinationRequirements.leftWorldHeight,
-            destinationRequirements.rightWorldWidth,
-            destinationRequirements.rightWorldHeight,
-            requirements.uiWidth,
-            requirements.uiHeight,
-            static_cast<unsigned int>(requirements.format));
         return true;
     }
 
@@ -477,16 +527,44 @@ public:
                     depthExportSurfaces.begin(),
                     depthExportSurfaces.end(),
                     [](const void* surface) { return surface != nullptr; }));
+            if (colorTargetsReady &&
+                companion == D3D8PresentationCompanion::WinlatorXR)
+            {
+                winlatorXr.SetTargets(surfaces);
+            }
             return colorTargetsReady && depthTargetsReady;
         }
 
         std::array<shared::SharedTextureDescription, shared::kTextureCount>
             descriptions = {};
-        if (!gpuProducer.CreateTargets(
+        const bool localTargets =
+            companion == D3D8PresentationCompanion::WinlatorXR;
+        std::array<DWORD, shared::kTextureCount> localFormats = {};
+        const bool targetsCreated = localTargets
+            ? gpuProducer.CreateLocalTargets(
                 d3d8Device,
                 requirements,
                 surfaces,
-                descriptions))
+                localFormats)
+            : gpuProducer.CreateTargets(
+                d3d8Device,
+                requirements,
+                surfaces,
+                descriptions);
+        if (localTargets && targetsCreated)
+        {
+            localWorldFormat = localFormats[0];
+            localUiFormat = localFormats[2];
+            WriteLog(
+                L"Created process-local WinlatorXR targets: world=%ux%u D3D format %lu x2, UI=%ux%u D3D format %lu.",
+                requirements.leftWorldWidth,
+                requirements.leftWorldHeight,
+                static_cast<unsigned long>(localWorldFormat),
+                requirements.uiWidth,
+                requirements.uiHeight,
+                static_cast<unsigned long>(localUiFormat));
+        }
+        if (!targetsCreated)
         {
             WriteLog(
                 L"D3D9Ex shared-target creation failed on the D3D8 device thread: target=%zu size=%ux%u format=%s result=0x%08lX small64=0x%08lX extended=%d cooperative=0x%08lX helperAttempts=%ld helperStage=%lu helperResult=0x%08lX createDevice=0x%08lX createTexture=0x%08lX gameOpen=0x%08lX.",
@@ -533,9 +611,17 @@ public:
         // reject a legacy D3D9 allocation when its first D3D11 open occurs in
         // the separate x64 presenter. The temporary local open is released
         // before publication and does not alter the normal transport path.
-        (void)PrimeD3D8To9D3D11SharedTextureInterop(
-            gpuProducer.DeviceDiagnostics(),
-            shared::LoadLegacySharedHandle(descriptions[0]));
+        if (companion == D3D8PresentationCompanion::WinlatorXR)
+        {
+            // The targets never leave this process; no D3D11 open happens.
+            winlatorXr.SetTargets(surfaces);
+        }
+        else
+        {
+            (void)PrimeD3D8To9D3D11SharedTextureInterop(
+                gpuProducer.DeviceDiagnostics(),
+                shared::LoadLegacySharedHandle(descriptions[0]));
+        }
         for (std::size_t index = 0; index < descriptions.size(); ++index)
         {
             block->textures[index] = descriptions[index];
@@ -743,6 +829,12 @@ public:
             ? InterlockedIncrement(&block->renderReadySequence)
             : pendingRenderRequest;
         pendingRenderRequest = sequence;
+        if (companion == D3D8PresentationCompanion::WinlatorXR &&
+            !winlatorXr.PublishRenderRequest(*block, sequence))
+        {
+            // No head pose yet; keep the sequence pending for the next frame.
+            return false;
+        }
         if (newlyRequested)
         {
             (void)channel.SignalProducerUpdate();
@@ -1011,7 +1103,8 @@ public:
         InterlockedExchange(
             &block->frameWaterMaskValid,
             frameDepthValid && depthFrame.waterMaskValid ? 1 : 0);
-        if (!gpuProducer.WaitForGpu(d3d8Device, timeoutMs))
+        if (companion != D3D8PresentationCompanion::WinlatorXR &&
+            !gpuProducer.WaitForGpu(d3d8Device, timeoutMs))
         {
             WriteLog(
                 L"D3D9Ex shared-target GPU completion timed out before frame %ld publication.",
@@ -1024,6 +1117,14 @@ public:
         MemoryBarrier();
         InterlockedExchange(&block->frameSequence, request.sequence);
         (void)channel.SignalProducerUpdate();
+        if (companion == D3D8PresentationCompanion::WinlatorXR)
+        {
+            winlatorXr.OnFramePublished(
+                *block,
+                request.sequence,
+                uiPlacement.headLocked,
+                IsScopeViewActive());
+        }
         NotifyScopeViewFramePublished(request.sequence);
         return true;
     }
@@ -1172,6 +1273,7 @@ public:
 
     void PrepareForResourceRelease()
     {
+        winlatorXr.ClearTargets();
         if (gpuSharedTargets)
         {
             StopCompanion();
@@ -1195,6 +1297,8 @@ public:
         gpuProducer = {};
         companion = D3D8PresentationCompanion::OpenXR;
         gpuSharedTargets = false;
+        localWorldFormat = 0;
+        localUiFormat = 0;
         texturesPublished = false;
         ambientOcclusionRequested = false;
         screenSpaceGlobalIlluminationRequested = false;
@@ -1240,6 +1344,7 @@ public:
             CloseHandle(presenterProcess.hProcess);
             presenterProcess.hProcess = nullptr;
         }
+        winlatorXr.Stop();
         producer.Shutdown();
         if (block != nullptr)
         {
@@ -1253,10 +1358,37 @@ public:
     bool IsHealthy() const
     {
         return block != nullptr &&
-            IsProcessRunning(presenterProcess.hProcess) &&
+            (companion == D3D8PresentationCompanion::WinlatorXR ||
+             IsProcessRunning(presenterProcess.hProcess)) &&
             shared::ReadState(&block->presenterState) !=
                 shared::ProcessState::Failed &&
             InterlockedCompareExchange(&block->shutdownRequested, 0, 0) == 0;
+    }
+
+    bool ComposesBeforePresent() const noexcept
+    {
+        return initialized &&
+            companion == D3D8PresentationCompanion::WinlatorXR;
+    }
+
+    int ActiveEyeForRequest(LONG sequence) const noexcept
+    {
+        return ComposesBeforePresent()
+            ? winlatorXr.ActiveEyeForRequest(sequence)
+            : -1;
+    }
+
+    void SetNextFrameHasWorld(bool hasWorld) noexcept
+    {
+        winlatorXr.SetNextFrameHasWorld(hasWorld);
+    }
+
+    void ComposeBeforePresent(void* d3d8Device)
+    {
+        if (ComposesBeforePresent() && block != nullptr)
+        {
+            winlatorXr.Compose(d3d8Device, *block);
+        }
     }
 
     static void ProducerLogThunk(void* context, const wchar_t* message)
@@ -1414,6 +1546,10 @@ public:
     shared::SharedControlChannel channel;
     shared::SharedTextureProducer producer;
     D3D8To9SharedTextureProducer gpuProducer;
+    WinlatorXrPresentationCompanion winlatorXr;
+    // D3D formats of process-local WinlatorXR targets; 0 for shared targets.
+    DWORD localWorldFormat = 0;
+    DWORD localUiFormat = 0;
     shared::ControlBlock* block = nullptr;
     shared::SharedTextureRequirements requirements = {};
     shared::SharedTextureRequirements destinationRequirements = {};
@@ -1552,6 +1688,32 @@ void D3D8SharedPresentationBridge::Shutdown()
     }
 }
 
+bool D3D8SharedPresentationBridge::ComposesBeforePresent() const noexcept
+{
+    return impl_ != nullptr && impl_->ComposesBeforePresent();
+}
+
+void D3D8SharedPresentationBridge::ComposeBeforePresent(void* d3d8Device)
+{
+    if (impl_ != nullptr)
+    {
+        impl_->ComposeBeforePresent(d3d8Device);
+    }
+}
+
+int D3D8SharedPresentationBridge::ActiveEyeForRequest(LONG sequence) const noexcept
+{
+    return impl_ != nullptr ? impl_->ActiveEyeForRequest(sequence) : -1;
+}
+
+void D3D8SharedPresentationBridge::SetNextFrameHasWorld(bool hasWorld) noexcept
+{
+    if (impl_ != nullptr)
+    {
+        impl_->SetNextFrameHasWorld(hasWorld);
+    }
+}
+
 bool D3D8SharedPresentationBridge::UsesGpuSharedTargets() const noexcept
 {
     return impl_ != nullptr && impl_->gpuSharedTargets;
@@ -1604,6 +1766,10 @@ UINT D3D8SharedPresentationBridge::RuntimeUiHeight() const noexcept
 
 DWORD D3D8SharedPresentationBridge::WorldD3DFormat() const noexcept
 {
+    if (impl_ != nullptr && impl_->localWorldFormat != 0)
+    {
+        return impl_->localWorldFormat;
+    }
     return UsesGpuSharedTargets()
         ? kD3DFormatA2B10G10R10
         : kD3DFormatA8R8G8B8;
@@ -1611,6 +1777,10 @@ DWORD D3D8SharedPresentationBridge::WorldD3DFormat() const noexcept
 
 DWORD D3D8SharedPresentationBridge::UiD3DFormat() const noexcept
 {
+    if (impl_ != nullptr && impl_->localUiFormat != 0)
+    {
+        return impl_->localUiFormat;
+    }
     return UsesGpuSharedTargets()
         ? kD3DFormatA16B16G16R16F
         : kD3DFormatA8R8G8B8;

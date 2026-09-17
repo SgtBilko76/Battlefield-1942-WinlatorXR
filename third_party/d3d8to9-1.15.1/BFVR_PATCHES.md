@@ -128,3 +128,34 @@ After GPU transport validation, BFVR's shared/OpenXR loader requests began
 defaulting world source eyes to the runtime-recommended dimensions unless the
 user supplied `BFVR_OPENXR_WORLD_RENDER_SCALE`. Two 1872x2016 no-HMD controls
 transported 1,288/1,288 frames apiece with zero failures and zero CPU readback.
+
+## BFVR side-by-side composition (WinlatorXR)
+
+The optional export `BFVRD3D8To9ComposeSideBySide` (`bfvr_shared_bridge.cpp`)
+serves BFVR's standalone-headset path, which has no separate compositor. It
+validates the translated device like the other bridge exports and takes the
+D3D8 surfaces returned by `BFVRD3D8To9CreateSharedRenderTarget`. It then:
+
+- captures all device state in a state block and saves render target 0 and
+  the depth-stencil surface;
+- draws the left and right world textures into the two halves of back buffer
+  0 as pre-transformed quads, and alpha-blends the UI texture over each half
+  at a caller-selected scale;
+- clears an 8x8 block at (0,0) with the caller's frame-sync colour; and
+- restores the render target, depth-stencil surface and state block.
+
+The companion export `BFVRD3D8To9CreateLocalRenderTarget` creates the same
+default-pool render-target texture without a shared handle, because these
+targets never leave the game process and some D3D9 implementations (for
+example desktop Wine's wined3d) do not support shared resources.
+
+Version 2 of the compose parameters (`BFVRD3D8To9SideBySideParamsV2`) adds a
+comfort vignette and color grading, drawn with a runtime-compiled pixel shader
+over the world quads (cached in `Direct3DDevice8::BFVRComposeShader` and
+counted with the device's other shaders so D3D8 release semantics hold), and
+up to 16 premultiplied overlay quads drawn after the UI. The overlay textures
+come from `BFVRD3D8To9CreateOverlayTexture`, `BFVRD3D8To9UpdateOverlayTexture`
+and `BFVRD3D8To9ReleaseOverlayTexture` (dynamic default-pool A8R8G8B8).
+
+These exports are resolved with `GetProcAddress`. Its absence only disables the
+WinlatorXR path, and the shared-bridge ABI version is unchanged.
