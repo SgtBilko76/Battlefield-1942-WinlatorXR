@@ -44,22 +44,28 @@ This is a beta. It was tested on one Quest 3 with the MoonGamers Battlefield
 4. Start the container and run `D:\BF1942\Setup-BFVR-Quest.bat` once. It
    backs up every file it changes (`*.bfvr-backup`) and:
    - installs BFVR's Direct3D 8 translator as the game's `D3D8.dll`;
-   - disables the intro movies (black under WinlatorXR);
+   - disables the intro movies, including the expansions' intro and legal
+     clips (black under WinlatorXR);
    - switches to software sound (hardware sound crashes the game there);
    - sets 3120x1430, texture quality 3, 60% view distance and normal object
      detail distance.
    Keep detail textures on: turning them off crashes map loading on the
    Quest.
 5. Optional: run `D:\BF1942\Install-BFVR-Shortcut.bat` once; WinlatorXR's
-   Shortcuts tab then shows **BFVR-VR**. The shortcut expects container 3;
-   edit `container_id` in `Download/Winlator/BFVR-VR.desktop` otherwise.
+   Shortcuts tab then shows **BFVR-VR**, **BFVR-VR-RoadToRome** and
+   **BFVR-VR-SecretWeapons**. The shortcuts expect container 3; edit
+   `container_id` in the `Download/Winlator/BFVR-VR*.desktop` files otherwise.
 
 If you use another screen size, change `SCREEN_W`/`SCREEN_H` in
-`Setup-BFVR-Quest.bat` and `screenSize` in `BFVR-VR.desktop` to match.
+`Setup-BFVR-Quest.bat` and `screenSize` in the `BFVR-VR*.desktop` files to
+match.
 
 ## Play
 
-Start `D:\BF1942\BFVR-VR.bat` (or the BFVR-VR shortcut). The first start
+Start `D:\BF1942\BFVR-VR.bat` (or the BFVR-VR shortcut). The expansions start
+with `BFVR-VR-RoadToRome.bat` (*The Road to Rome*) and
+`BFVR-VR-SecretWeapons.bat` (*Secret Weapons of WWII*); they are part of the
+MoonGamers package and share the base game's settings. The first start
 takes a few minutes. Native menus appear on WinlatorXR's flat virtual screen;
 gameplay is head tracked.
 
