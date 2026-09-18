@@ -56,6 +56,11 @@ std::atomic<bool> g_blocked{false};
 std::atomic<long> g_directInputCreations{0};
 std::atomic<void*> g_mouseDevices[kMaximumMouseDevices] = {};
 std::atomic<bool> g_blockLogged{false};
+std::atomic<int> g_pendingWheel{0};
+std::atomic<DWORD> g_wheelSequence{0x40000000};
+constexpr LONG kWheelDelta = 120;
+constexpr DWORD kGetDeviceDataPeek = 0x1; // DIGDD_PEEK
+constexpr DWORD kMouseStateZOffset = 8; // DIMOUSESTATE::lZ, also DIMOFS_Z
 
 void Log(const wchar_t* message)
 {
@@ -148,6 +153,12 @@ HRESULT STDMETHODCALLTYPE HookGetDeviceState(void* self, DWORD size, void* data)
     {
         // DIMOUSESTATE / DIMOUSESTATE2: axes and buttons, all zero = idle.
         std::memset(data, 0, size);
+        const int wheel = size >= kMouseStateZOffset + sizeof(LONG) ? g_pendingWheel.exchange(0) : 0;
+        if (wheel != 0)
+        {
+            const LONG z = wheel * kWheelDelta;
+            std::memcpy(static_cast<BYTE*>(data) + kMouseStateZOffset, &z, sizeof(z));
+        }
     }
     return result;
 }
@@ -164,11 +175,29 @@ HRESULT STDMETHODCALLTYPE HookGetDeviceData(
     {
         return E_FAIL;
     }
+    const DWORD capacity = count != nullptr ? *count : 0;
     const HRESULT result = original(self, objectDataSize, data, count, flags);
     if (SUCCEEDED(result) && count != nullptr && ShouldDrop(self))
     {
-        // The buffered events were consumed by the call above; report none.
+        // The buffered events were consumed by the call above; report none,
+        // or only a queued wheel notch (DIDEVICEOBJECTDATA: ofs, data, time,
+        // sequence).
         *count = 0;
+        constexpr DWORD kMinimumObjectDataSize = 4 * sizeof(DWORD);
+        const bool canReport = data != nullptr && capacity >= 1 &&
+            objectDataSize >= kMinimumObjectDataSize && (flags & kGetDeviceDataPeek) == 0;
+        const int wheel = canReport ? g_pendingWheel.exchange(0) : 0;
+        if (wheel != 0)
+        {
+            std::memset(data, 0, objectDataSize);
+            const DWORD values[4] = {
+                kMouseStateZOffset,
+                static_cast<DWORD>(wheel * kWheelDelta),
+                GetTickCount(),
+                g_wheelSequence.fetch_add(1)};
+            std::memcpy(data, values, sizeof(values));
+            *count = 1;
+        }
     }
     return result;
 }
@@ -335,6 +364,11 @@ void InstallWinlatorXrDesktopMouseFilter(WinlatorXrMouseFilterLogCallback log) n
 void SetWinlatorXrDesktopMouseBlocked(bool blocked) noexcept
 {
     g_blocked.store(blocked);
+}
+
+void QueueWinlatorXrMouseWheelNotch(int direction) noexcept
+{
+    g_pendingWheel = direction > 0 ? 1 : -1;
 }
 
 } // namespace bfvr

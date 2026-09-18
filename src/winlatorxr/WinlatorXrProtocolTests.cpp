@@ -155,18 +155,42 @@ int main()
             (right.flags & shared::kControllerHandFlagAimOrientationTracked) != 0,
         "tracked aim and grip flags must be set");
     passed &= Expect(
-        left.triggerValue == 1.0F && left.squeezeValue == 1.0F &&
-            right.triggerValue == 1.0F && right.squeezeValue == 1.0F,
+        left.squeezeValue == 1.0F && right.triggerValue == 1.0F && right.squeezeValue == 1.0F,
         "trigger and grip buttons must become full analog values");
     passed &= Expect(
+        left.triggerValue == 1.0F,
+        "the left trigger is use in the Quest layout");
+    passed &= Expect(
         (left.buttons & shared::kControllerHandButtonPrimary) != 0 &&
-            (left.buttons & shared::kControllerHandButtonThumbstick) != 0 &&
+            (left.buttons & shared::kControllerHandButtonThumbstick) == 0 &&
             (left.buttons & shared::kControllerHandButtonSecondary) == 0 &&
             (right.buttons & shared::kControllerHandButtonSecondary) != 0 &&
-            (right.buttons & shared::kControllerHandButtonPrimary) == 0 &&
+            (right.buttons & shared::kControllerHandButtonPrimary) != 0 &&
             (right.buttons & shared::kControllerHandButtonThumbstick) != 0 &&
             (right.buttons & shared::kControllerHandButtonMenu) == 0,
-        "X/Y and A/B must map to primary/secondary");
+        "X/Y and B keep their meaning; the left stick click holds the Quick Menu");
+    InputState pressA = state;
+    pressA.buttons.buttonA = true;
+    pressA.buttons.leftTrigger = false;
+    pressA.buttons.leftThumbstick = false;
+    shared::SharedControllerSample useSample;
+    BuildControllerSample(pressA, 12345, useSample);
+    passed &= Expect(
+        useSample.hands[0].triggerValue == 0.0F &&
+            (useSample.hands[1].buttons & shared::kControllerHandButtonQuestA) != 0 &&
+            (useSample.hands[1].buttons & shared::kControllerHandButtonPrimary) == 0,
+        "A is reported on its own and does not open the Quick Menu");
+    InputState leftTriggerOnly = state;
+    leftTriggerOnly.buttons.rightGrip = false;
+    leftTriggerOnly.buttons.buttonA = false;
+    leftTriggerOnly.buttons.leftTrigger = true;
+    shared::SharedControllerSample triggerSample;
+    BuildControllerSample(leftTriggerOnly, 12345, triggerSample);
+    passed &= Expect(
+        triggerSample.hands[0].triggerValue == 1.0F &&
+            triggerSample.hands[1].squeezeValue == 0.0F &&
+            (triggerSample.hands[1].buttons & shared::kControllerHandButtonQuestA) == 0,
+        "the left trigger is use and not secondary fire");
     passed &= Expect(
         Near(right.thumbstickX, 1.0F) && Near(left.thumbstickY, -0.5F),
         "thumbsticks must be clamped to [-1, 1]");

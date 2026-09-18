@@ -48,6 +48,9 @@ constexpr DWORD kControllerHandButtonPrimary = 0x1;
 constexpr DWORD kControllerHandButtonSecondary = 0x2;
 constexpr DWORD kControllerHandButtonMenu = 0x4;
 constexpr DWORD kControllerHandButtonThumbstick = 0x8;
+// WinlatorXR only (right hand): the Quest A button, which the x86 input
+// overlay maps itself (reload). The OpenXR presenter never sets it.
+constexpr DWORD kControllerHandButtonQuestA = 0x10;
 
 enum class ProcessState : LONG
 {

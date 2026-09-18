@@ -232,6 +232,8 @@ struct BFVRD3D8To9SideBySideParamsV2
 	float colorExposureEv;
 	float colorContrast;
 	float colorSaturation;
+	// Fraction of each eye's width covered by the UI panel; 0 uses uiScale.
+	float uiWidthScale;
 	UINT overlayCount;
 	BFVRD3D8To9OverlayQuad overlays[BFVR_D3D8TO9_MAX_OVERLAY_QUADS];
 };

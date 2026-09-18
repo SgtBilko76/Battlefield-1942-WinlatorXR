@@ -6,12 +6,14 @@
 #include "client/MountedWeaponAimResolver.h"
 #include "stereo/AircraftControlMath.h"
 #include "client/ScopeViewOverlay.h"
+#include "client/WinlatorXrDesktopMouseFilter.h"
 #include "presenter/SharedPresentationProtocol.h"
 #include "settings/UserSettings.h"
 #include "stereo/DirectionalLocomotion.h"
 #include "stereo/InfantryAuthoritativeAim.h"
 #include "stereo/SurfaceVehicleDriveMath.h"
 #include "stereo/VehicleMotionAimMath.h"
+#include "winlatorxr/WinlatorXrClient.h"
 
 #include <MinHook.h>
 
@@ -65,6 +67,10 @@ constexpr DWORD kLogicalInputAltFire = 23;
 constexpr DWORD kLogicalInputReload = 24;
 constexpr DWORD kLogicalInputProne = 28;
 constexpr DWORD kLogicalInputCrouch = 29;
+// Quest layout: a B press shorter than this cycles weapons (holding B longer
+// is the recenter gesture).
+constexpr ULONGLONG kQuestShortPressMs = 600;
+constexpr int kQuestNextItemWheelDirection = 1;
 constexpr DWORD kLogicalInputCount = 55;
 constexpr DWORD kGameInputShowScoreboard = 35;
 constexpr DWORD kControllerHandLeft = 0;
@@ -1341,6 +1347,10 @@ private:
             rightSecondaryWasDown = IsHandButtonPressed(
                 right,
                 bfvr::shared::kControllerHandButtonSecondary);
+            // An A press that overlaps the Quick Menu does not reload.
+            questAWasDown = IsHandButtonPressed(
+                right,
+                bfvr::shared::kControllerHandButtonQuestA);
             return;
         }
 
@@ -1453,12 +1463,52 @@ private:
             jumpAndParachutePressed);
         SetPulseInput(destination, kLogicalInputProne, pronePressed);
         SetHeldInput(destination, kLogicalInputCrouch, crouchToggled);
-        SetPulseInput(
-            destination,
-            kLogicalInputReload,
-            TakeRisingEdge(
-                IsHandButtonPressed(right, bfvr::shared::kControllerHandButtonSecondary),
-                rightSecondaryWasDown));
+        const bool rightSecondaryDown = IsHandButtonPressed(
+            right,
+            bfvr::shared::kControllerHandButtonSecondary);
+        if (IsQuestButtonLayout())
+        {
+            // WinlatorXR (Quest): a short B press selects the next weapon on
+            // release, so a 2-second recenter hold does not also switch.
+            // BF1942 drops c_PINextItem from this frame (its wheel action is
+            // resolved earlier), so the switch is a mouse-wheel notch.
+            const ULONGLONG now = GetTickCount64();
+            bool nextItem = false;
+            if (rightSecondaryDown && !rightSecondaryWasDown)
+            {
+                rightSecondaryPressedAtMs = now;
+            }
+            else if (!rightSecondaryDown && rightSecondaryWasDown)
+            {
+                nextItem = now - rightSecondaryPressedAtMs < kQuestShortPressMs;
+            }
+            rightSecondaryWasDown = rightSecondaryDown;
+            if (nextItem)
+            {
+                bfvr::QueueWinlatorXrMouseWheelNotch(kQuestNextItemWheelDirection);
+            }
+
+            // A reloads on press, like reload on the PC layout's B.
+            SetPulseInput(
+                destination,
+                kLogicalInputReload,
+                TakeRisingEdge(
+                    IsHandButtonPressed(right, bfvr::shared::kControllerHandButtonQuestA),
+                    questAWasDown));
+        }
+        else
+        {
+            SetPulseInput(
+                destination,
+                kLogicalInputReload,
+                TakeRisingEdge(rightSecondaryDown, rightSecondaryWasDown));
+        }
+    }
+
+    static bool IsQuestButtonLayout() noexcept
+    {
+        static const bool quest = bfvr::winlatorxr::DetectWinlatorXrEnvironment();
+        return quest;
     }
 
     void OverlayCurrentLocalAliveFrame(
@@ -1610,6 +1660,7 @@ private:
         nativeAltFireWasDown = false;
         leftPrimaryWasDown = false;
         rightSecondaryWasDown = false;
+        questAWasDown = false;
         rightStickVerticalDirection = 0;
         crouchToggled = false;
         bfvr::stereo::ResetVehicleMotionAim(surfaceVehicleMotionAim);
@@ -1801,6 +1852,8 @@ private:
     bool nativeAltFireWasDown = false;
     bool leftPrimaryWasDown = false;
     bool rightSecondaryWasDown = false;
+    ULONGLONG rightSecondaryPressedAtMs = 0;
+    bool questAWasDown = false;
     int rightStickVerticalDirection = 0;
     bool crouchToggled = false;
     bfvr::stereo::VehicleMotionAimTracker surfaceVehicleMotionAim = {};

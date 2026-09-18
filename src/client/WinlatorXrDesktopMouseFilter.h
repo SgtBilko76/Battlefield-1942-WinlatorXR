@@ -16,4 +16,10 @@ void InstallWinlatorXrDesktopMouseFilter(WinlatorXrMouseFilterLogCallback log) n
 // is shown, false in menus (where the WinlatorXR pointer is the mouse).
 void SetWinlatorXrDesktopMouseBlocked(bool blocked) noexcept;
 
+// Queues one mouse-wheel notch that the filtered mouse reports to BF1942 on
+// its next read during gameplay (BF1942 cycles weapons with the wheel, and
+// its wheel action never reaches the per-frame player input). Positive is
+// away from the user.
+void QueueWinlatorXrMouseWheelNotch(int direction) noexcept;
+
 } // namespace bfvr

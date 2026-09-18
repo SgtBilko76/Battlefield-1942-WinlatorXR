@@ -15,7 +15,10 @@ the v1.0.2 section exactly as written below.
   `BFVR_WINLATORXR_EYE_SIZE=WIDTHxHEIGHT` to change the per-eye size. The
   Quick Menu (hold right A), VR Settings, the "Back to game" button, comfort
   and death-camera vignettes, color profiles and the kill sound also work
-  there. The Windows PC version is unchanged.
+  there. On the headset, the left trigger is "use", holding the left stick
+  click opens the Quick Menu, A reloads, and a short B press selects
+  the next weapon (holding B still recenters). The Windows PC
+  version is unchanged.
 
 ## [1.0.2]
 

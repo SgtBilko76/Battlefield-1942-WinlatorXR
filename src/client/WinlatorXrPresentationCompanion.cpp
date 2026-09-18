@@ -9,6 +9,7 @@
 #include <mmsystem.h>
 
 #include <algorithm>
+#include <cmath>
 #include <cstdio>
 #include <cwchar>
 #include <fstream>
@@ -25,6 +26,7 @@ constexpr ULONGLONG kStaleFrameMs = 1000;
 constexpr float kDefaultHudScale = 0.70F;
 // Native menu UI drawn head-locked while a BFVR panel is open.
 constexpr float kMenuUnderOverlayUiScale = 0.80F;
+constexpr float kHudCanvasAspect = 4.0F / 3.0F;
 constexpr UINT kMinimumEyeDimension = 256;
 constexpr ULONGLONG kSettingsPollMs = 250;
 constexpr ULONGLONG kComfortMotionFreshMs = 150;
@@ -449,6 +451,17 @@ void WinlatorXrPresentationCompanion::Compose(
         params.uiScale = publishedScope_ ? 1.0F
             : nativeMenuFrame           ? kMenuUnderOverlayUiScale
                                         : ReadHudScale();
+        if (!publishedScope_)
+        {
+            // BF1942 lays its HUD out on a 4:3 canvas; keep that shape in the
+            // headset instead of squeezing it into the eye's aspect.
+            const shared::SharedPresentationFov& fov = publishedViews_[0].fov;
+            const float tangentWidth = std::tan(fov.angleRight) - std::tan(fov.angleLeft);
+            const float tangentHeight = std::tan(fov.angleUp) - std::tan(fov.angleDown);
+            overlayParams.uiWidthScale = tangentWidth > 0.0F && tangentHeight > 0.0F
+                ? std::min(params.uiScale * kHudCanvasAspect * tangentHeight / tangentWidth, 1.0F)
+                : 0.0F;
+        }
         overlayParams.vignetteStrength = vignetteStrength_;
         overlayParams.vignetteDeathBlend = vignetteDeathBlend_;
         overlayParams.colorProfile = colorProfile_;

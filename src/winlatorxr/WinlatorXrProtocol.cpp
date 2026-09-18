@@ -475,6 +475,9 @@ void BuildControllerSample(
     }
     sample.flags = shared::kControllerSampleFlagSessionFocused;
     const Buttons& buttons = state.buttons;
+    // Quest layout: the left trigger is "use", and the left stick click holds
+    // the Quick Menu (BFVR's right primary). A (reload) and B
+    // (next weapon / hold to recenter) are timed by the input overlay.
     BuildHand(
         state.left,
         state.hasGripOrientation,
@@ -483,18 +486,22 @@ void BuildControllerSample(
         buttons.buttonX,
         buttons.buttonY,
         buttons.leftMenu,
-        buttons.leftThumbstick,
+        false,
         sample.hands[0]);
     BuildHand(
         state.right,
         state.hasGripOrientation,
         buttons.rightTrigger,
         buttons.rightGrip,
-        buttons.buttonA,
+        buttons.leftThumbstick,
         buttons.buttonB,
         false,
         buttons.rightThumbstick,
         sample.hands[1]);
+    if (buttons.buttonA)
+    {
+        sample.hands[1].buttons |= shared::kControllerHandButtonQuestA;
+    }
 }
 
 std::array<float, 2> UpdateHapticPulses(

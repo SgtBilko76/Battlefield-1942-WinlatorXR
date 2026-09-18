@@ -168,8 +168,69 @@ std::vector<DWORD> CopyStack(DWORD esp)
     return stack;
 }
 
+// Reports also go to BFVR\logs\watchdog.log, which is written even when
+// BFVR's diagnostics are off.
+void AppendToWatchdogFile(const std::wstring& message)
+{
+    static wchar_t path[MAX_PATH] = {};
+    if (path[0] == L'\0')
+    {
+        HMODULE module = nullptr;
+        if (!GetModuleHandleExW(
+                GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS | GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT,
+                reinterpret_cast<LPCWSTR>(&AppendToWatchdogFile),
+                &module) ||
+            GetModuleFileNameW(module, path, MAX_PATH) == 0)
+        {
+            return;
+        }
+        wchar_t* const separator = wcsrchr(path, L'\\');
+        if (separator == nullptr)
+        {
+            path[0] = L'\0';
+            return;
+        }
+        *separator = L'\0';
+        wcscat_s(path, L"\\logs");
+        CreateDirectoryW(path, nullptr);
+        wcscat_s(path, L"\\watchdog.log");
+    }
+    SYSTEMTIME now = {};
+    GetLocalTime(&now);
+    char prefix[40] = {};
+    const int prefixLength = sprintf_s(
+        prefix,
+        "%02u:%02u:%02u.%03u ",
+        now.wHour,
+        now.wMinute,
+        now.wSecond,
+        now.wMilliseconds);
+    std::string line(prefix, prefixLength > 0 ? static_cast<size_t>(prefixLength) : 0);
+    for (const wchar_t character : message)
+    {
+        line.push_back(character < 0x80 ? static_cast<char>(character) : '?');
+    }
+    line += "\r\n";
+    const HANDLE file = CreateFileW(
+        path,
+        FILE_APPEND_DATA,
+        FILE_SHARE_READ | FILE_SHARE_WRITE,
+        nullptr,
+        OPEN_ALWAYS,
+        FILE_ATTRIBUTE_NORMAL,
+        nullptr);
+    if (file == INVALID_HANDLE_VALUE)
+    {
+        return;
+    }
+    DWORD written = 0;
+    WriteFile(file, line.data(), static_cast<DWORD>(line.size()), &written, nullptr);
+    CloseHandle(file);
+}
+
 void Log(const std::wstring& message)
 {
+    AppendToWatchdogFile(message);
     const WinlatorXrWatchdogLogCallback log = g_log.load();
     if (log == nullptr)
     {

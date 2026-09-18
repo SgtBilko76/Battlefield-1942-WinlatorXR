@@ -274,10 +274,29 @@ These are established behaviors, not cleanup opportunities.
   violations, because no debugger can be attached there without disabling
   BFVR's CreateDevice hook. Menu art loads 10 s after the first frame; loading
   it during BF1942's startup once hung the game.
+- Quest button layout (owner request, in `winlatorxr::BuildControllerSample`):
+  the left stick click is reported as the right primary button (Quick Menu /
+  VR Settings click) and A as `kControllerHandButtonQuestA`. Under WinlatorXR
+  `ControllerInputOverlay` turns an A press into reload and a
+  B press shorter than 600 ms into one mouse-wheel notch that the DirectInput
+  mouse filter reports to the game (BF1942 resolves the wheel before its
+  per-frame player input, whose normalizer `FUN_004913a0` drops
+  `c_PINextItem`, input 46); holding B still recenters. WinlatorXR itself
+  toggles its 3DoF "immersive" screen on a left stick click while no game
+  requests head tracking (native menus).
 - Headset notes: side-by-side (`BFVR_WINLATORXR_AER=0`) felt much smoother
   than alternate-eye rendering. `game.setDetailTexture 0` crashes map loading
-  there (`BF1942.exe+0x2707FE`, terrain texture setup). The container's XR
-  controller key mapping must be empty, or buttons also type keys.
+  there (`BF1942.exe+0x2707FE`, terrain texture setup). WinlatorXR also types keys for
+  controller buttons; its container settings page turns "KEY_NONE" back into
+  its defaults (A, B, X, Y, Space, Enter, arrows) whenever it is saved, so map
+  the buttons to numpad keys BF1942 does not use instead. A setup the owner
+  found sharp and smooth on Quest 3: screen 3120x1430 (about 2.2:1, so each
+  side-by-side eye is roughly square), HUD scale 0.36, DXVK async on, BF1942 texture quality 3, and 16x
+  anisotropic filtering through a `dxvk.conf` next to the game that the
+  launch script names in `DXVK_CONFIG_FILE`.
+  `WinlatorXrWatchdog` also writes `BFVR\logs\watchdog.log` when diagnostics
+  are off; an intermittent early freeze (main thread idle after the first
+  composed frame) is still unexplained.
 - Not available there: x64 AO, SSGI, water SSR, bloom, FXAA and the separate
   scope layer (scope frames show the UI full-screen instead). Menus without a
   BFVR panel are shown on WinlatorXR's virtual screen. Recenter is B held for

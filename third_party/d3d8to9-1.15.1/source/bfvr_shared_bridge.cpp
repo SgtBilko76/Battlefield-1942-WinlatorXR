@@ -827,7 +827,10 @@ extern "C" HRESULT WINAPI BFVRD3D8To9ComposeSideBySide(
 			const bool fullWidthUi = monoUi || singleEye;
 			const float regionWidth = fullWidthUi ? width : halfWidth;
 			const int regions = fullWidthUi ? 1 : 2;
-			const float panelWidth = regionWidth * scale;
+			float widthScale = overlayParams != nullptr ? overlayParams->uiWidthScale : 0.0f;
+			if (!(widthScale > 0.05f && widthScale <= 1.0f))
+				widthScale = scale;
+			const float panelWidth = regionWidth * widthScale;
 			const float panelHeight = height * scale;
 			device->SetRenderState(D3DRS_ALPHABLENDENABLE, TRUE);
 			for (int eye = 0; eye < regions; ++eye)
