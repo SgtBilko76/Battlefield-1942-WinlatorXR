@@ -60,6 +60,12 @@ After installation:
 See the [User Guide](docs/USER_GUIDE.md) for controls, settings, SteamVR setup,
 troubleshooting, and uninstalling.
 
+## Meta Quest standalone (beta)
+
+An experimental standalone build runs on Meta Quest 3 inside WinlatorXR. See
+[docs/QUEST_BETA.md](docs/QUEST_BETA.md) for requirements, setup, controls and
+known issues.
+
 ## Important safety information
 
 BFVR loads its own DLL into the Battlefield 1942 process. That is how this mod
