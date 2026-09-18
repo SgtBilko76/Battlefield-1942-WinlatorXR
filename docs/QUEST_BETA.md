@@ -1,4 +1,4 @@
-# BFVR Quest Beta 1 (WinlatorXR)
+# BFVR Quest Beta 2 (WinlatorXR)
 
 Experimental standalone build of BFVR for Meta Quest 3. Battlefield 1942 runs
 under Wine and Box64 inside WinlatorXR; BFVR takes head and controller
@@ -6,7 +6,11 @@ tracking from WinlatorXR and renders the game in stereo. The Windows PC version
 is unchanged and not part of this package.
 
 This is a beta. It was tested on one Quest 3 with the MoonGamers Battlefield
-1942 package; expect rough edges (see Known issues).
+1942 package, including both expansions; expect rough edges (see Known
+issues).
+
+Beta 2 adds launchers and shortcuts for *The Road to Rome* and *Secret Weapons
+of WWII*.
 
 ## Requirements
 
@@ -96,6 +100,10 @@ profile, kill sound and more).
 filtering.
 
 ## Known issues
+
+- *Secret Weapons of WWII* runs noticeably slower than the base game (busier
+  maps). Lowering View Distance in the game's video options helps; the setting
+  is shared by the base game and both expansions.
 
 - Occasionally the screen stays black with music right after starting. Close
   the game and start it again. `BFVR\logs\watchdog.log` records where it
