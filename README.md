@@ -1,5 +1,8 @@
 # BFVR
 
+[![Sponsor](https://img.shields.io/badge/Sponsor-SgtBilko76-ea4aaa?logo=githubsponsors&logoColor=white)](https://github.com/sponsors/SgtBilko76)
+
+
 [![Battlefield 1942 VR](https://img.youtube.com/vi/htv_u67kUKw/maxresdefault.jpg)](https://www.youtube.com/watch?v=htv_u67kUKw)
 <img width="1865" height="995" alt="ss1" src="https://github.com/user-attachments/assets/ab758925-3045-4967-8e74-cff4e020f5c6" />
 <img width="1915" height="1005" alt="ss4" src="https://github.com/user-attachments/assets/9b980f21-5418-4ba6-b694-c6232f06b9a1" />
