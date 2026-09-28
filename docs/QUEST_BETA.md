@@ -1,4 +1,4 @@
-# BFVR Quest Beta 2 (WinlatorXR)
+# BFVR Quest Beta 3 (WinlatorXR)
 
 Experimental standalone build of BFVR for Meta Quest 3. Battlefield 1942 runs
 under Wine and Box64 inside WinlatorXR; BFVR takes head and controller
@@ -9,8 +9,16 @@ This is a beta. It was tested on one Quest 3 with the MoonGamers Battlefield
 1942 package, including both expansions; expect rough edges (see Known
 issues).
 
-Beta 2 adds launchers and shortcuts for *The Road to Rome* and *Secret Weapons
-of WWII*.
+Beta 3 renders one full 1792x1624 eye per frame (alternate-eye) for a sharper
+image, and the Quest controllers now use the PC VR button layout, with the
+left stick click as the map button.
+
+### Updating from Beta 2
+
+1. Copy the zip's `BF1942` and `Winlator` folders over your existing ones.
+2. Set the container's **Screen size to 1792x1624**.
+3. Start the container and run `Setup-BFVR-Quest.bat` and
+   `Install-BFVR-Shortcut.bat` once more.
 
 ## Requirements
 
@@ -63,7 +71,10 @@ of WWII*.
 
 If you use another screen size, change `SCREEN_W`/`SCREEN_H` in
 `Setup-BFVR-Quest.bat` and `screenSize` in the `BFVR-VR*.desktop` files to
-match.
+match. Keep the container's own screen size the same: a `.bat` started from
+the file manager uses it, and if the game's resolution does not fit, BF1942
+falls back to 640x480 and saves that to its profile (run
+`Setup-BFVR-Quest.bat` again to restore it).
 
 ## Play
 
@@ -113,6 +124,9 @@ filtering.
 - Two-hand weapon grip does not always attach; hold the left grip closer to
   the weapon's front grip.
 - A left stick click in a native menu also toggles WinlatorXR's 3DoF mode.
+- If a controller button also opens the map, the scoreboard or another game
+  action, WinlatorXR is typing a game key for it: check the container's XR
+  controller mapping against the tested mapping above.
 - Not available on the Quest: ambient occlusion, bloom, reflections, FXAA and
   the separate scope layer.
 
