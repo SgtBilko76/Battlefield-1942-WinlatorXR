@@ -134,7 +134,9 @@ filtering.
 - A left stick click in a native menu also toggles WinlatorXR's 3DoF mode.
 - If a controller button also opens the map, the scoreboard or another game
   action, WinlatorXR is typing a game key for it: check the container's XR
-  controller mapping against the tested mapping above.
+  controller mapping against the tested mapping above. BFVR drops a typed
+  Enter during gameplay (it would open the spawn screen); set
+  `BFVR_WINLATORXR_ENTER_FILTER=0` in the launcher to turn that off.
 - Not available on the Quest: ambient occlusion, bloom, reflections, FXAA and
   the separate scope layer.
 

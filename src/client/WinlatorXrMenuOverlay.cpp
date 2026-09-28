@@ -3,6 +3,7 @@
 #include "client/MainMenuOverlay.h"
 #include "client/QuickMenuArt.h"
 #include "client/SettingsMenuArt.h"
+#include "client/WinlatorXrDesktopMouseFilter.h"
 #include "stereo/QuickMenuMirrorMath.h"
 
 #include <algorithm>
@@ -388,6 +389,11 @@ void WinlatorXrMenuOverlay::Dispatch(
     default:
         firstKey = QuickMenuVirtualKey(selection);
         break;
+    }
+    if (firstKey == VK_RETURN)
+    {
+        // Deploy: the gameplay Enter filter must let BFVR's own Enter through.
+        AllowWinlatorXrOwnEnterKey();
     }
     const bool sent = SendForegroundKeyPress(firstKey);
     if (sent && secondKey != 0)

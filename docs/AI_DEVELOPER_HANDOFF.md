@@ -286,6 +286,14 @@ These are established behaviors, not cleanup opportunities.
   `FUN_004913a0` drops `c_PINextItem` (input 46). WinlatorXR itself
   toggles its 3DoF "immersive" screen on a left stick click while no game
   requests head tracking (native menus).
+- WinlatorXR types keyboard keys for controller buttons, and a mapping that
+  falls back to its defaults can type Enter, which opens BF1942's spawn
+  screen (Enter is hard-wired, not in the control `.con` files). The
+  DirectInput filter in `WinlatorXrDesktopMouseFilter` therefore also hooks
+  the keyboard device and drops Enter/numpad Enter while a head-tracked
+  gameplay frame is shown (pure logic in `winlatorxr/WinlatorXrKeyFilter.h`).
+  The Quick Menu's Deploy calls `AllowWinlatorXrOwnEnterKey()` before it sends
+  Enter. `BFVR_WINLATORXR_ENTER_FILTER=0` disables the filter.
 - Headset notes: side-by-side (`BFVR_WINLATORXR_AER=0`) felt much smoother
   than alternate-eye rendering. `game.setDetailTexture 0` crashes map loading
   there (`BF1942.exe+0x2707FE`, terrain texture setup). WinlatorXR also types keys for

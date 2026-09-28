@@ -1,6 +1,7 @@
 #include "client/WinlatorXrDesktopMouseFilter.h"
 
 #include "winlatorxr/WinlatorXrClient.h"
+#include "winlatorxr/WinlatorXrKeyFilter.h"
 
 #include <windows.h>
 
@@ -19,6 +20,7 @@ constexpr std::size_t kDirectInput8CreateDeviceSlot = 3;
 constexpr std::size_t kDeviceGetDeviceStateSlot = 9;
 constexpr std::size_t kDeviceGetDeviceDataSlot = 10;
 constexpr std::size_t kMaximumMouseDevices = 4;
+constexpr std::size_t kMaximumKeyboardDevices = 4;
 
 // GUID_SysMouse, GUID_SysMouseEm and GUID_SysMouseEm2 from dinput.h.
 constexpr GUID kSysMouse =
@@ -27,6 +29,13 @@ constexpr GUID kSysMouseEm =
     {0x6F1D2B80, 0xD5A0, 0x11CF, {0xBF, 0xC7, 0x44, 0x45, 0x53, 0x54, 0x00, 0x00}};
 constexpr GUID kSysMouseEm2 =
     {0x6F1D2B81, 0xD5A0, 0x11CF, {0xBF, 0xC7, 0x44, 0x45, 0x53, 0x54, 0x00, 0x00}};
+// GUID_SysKeyboard, GUID_SysKeyboardEm and GUID_SysKeyboardEm2.
+constexpr GUID kSysKeyboard =
+    {0x6F1D2B61, 0xD5A0, 0x11CF, {0xBF, 0xC7, 0x44, 0x45, 0x53, 0x54, 0x00, 0x00}};
+constexpr GUID kSysKeyboardEm =
+    {0x6F1D2B82, 0xD5A0, 0x11CF, {0xBF, 0xC7, 0x44, 0x45, 0x53, 0x54, 0x00, 0x00}};
+constexpr GUID kSysKeyboardEm2 =
+    {0x6F1D2B83, 0xD5A0, 0x11CF, {0xBF, 0xC7, 0x44, 0x45, 0x53, 0x54, 0x00, 0x00}};
 
 using DirectInput8CreateFn = HRESULT(WINAPI*)(
     HINSTANCE instance, DWORD version, REFIID iid, void** out, void* outer);
@@ -56,6 +65,10 @@ std::atomic<bool> g_blocked{false};
 std::atomic<long> g_directInputCreations{0};
 std::atomic<void*> g_mouseDevices[kMaximumMouseDevices] = {};
 std::atomic<bool> g_blockLogged{false};
+std::atomic<void*> g_keyboardDevices[kMaximumKeyboardDevices] = {};
+std::atomic<bool> g_enterFilterEnabled{true};
+std::atomic<ULONGLONG> g_ownEnterAllowedUntil{0};
+std::atomic<bool> g_enterDropLogged{false};
 
 void Log(const wchar_t* message)
 {
@@ -75,6 +88,44 @@ bool IsMouseDevice(void* device)
         }
     }
     return false;
+}
+
+bool IsKeyboardDevice(void* device)
+{
+    for (const auto& keyboard : g_keyboardDevices)
+    {
+        if (device != nullptr && keyboard.load() == device)
+        {
+            return true;
+        }
+    }
+    return false;
+}
+
+bool ShouldDropEnter(void* device)
+{
+    return g_enterFilterEnabled.load() && IsKeyboardDevice(device) &&
+        winlatorxr::ShouldDropEnter(g_blocked.load(), GetTickCount64(), g_ownEnterAllowedUntil.load());
+}
+
+void LogEnterDropped()
+{
+    if (!g_enterDropLogged.exchange(true))
+    {
+        Log(L"WinlatorXR: dropped a keyboard Enter during VR gameplay (WinlatorXR key mapping; the spawn screen stays closed).");
+    }
+}
+
+void RememberDevice(std::atomic<void*> devices[], std::size_t count, void* device)
+{
+    for (std::size_t index = 0; index < count; ++index)
+    {
+        void* expected = nullptr;
+        if (devices[index].load() == device || devices[index].compare_exchange_strong(expected, device))
+        {
+            return;
+        }
+    }
 }
 
 bool ShouldDrop(void* device)
@@ -149,6 +200,11 @@ HRESULT STDMETHODCALLTYPE HookGetDeviceState(void* self, DWORD size, void* data)
         // DIMOUSESTATE / DIMOUSESTATE2: axes and buttons, all zero = idle.
         std::memset(data, 0, size);
     }
+    else if (SUCCEEDED(result) && data != nullptr && ShouldDropEnter(self) &&
+        winlatorxr::ClearEnterKeys(static_cast<std::uint8_t*>(data), size))
+    {
+        LogEnterDropped();
+    }
     return result;
 }
 
@@ -170,6 +226,16 @@ HRESULT STDMETHODCALLTYPE HookGetDeviceData(
         // The buffered events were consumed by the call above; report none.
         *count = 0;
     }
+    else if (SUCCEEDED(result) && data != nullptr && count != nullptr && ShouldDropEnter(self))
+    {
+        const DWORD kept = winlatorxr::RemoveEnterEvents(
+            static_cast<std::uint8_t*>(data), objectDataSize, *count);
+        if (kept != *count)
+        {
+            *count = kept;
+            LogEnterDropped();
+        }
+    }
     return result;
 }
 
@@ -188,17 +254,20 @@ HRESULT STDMETHODCALLTYPE HookCreateDevice(void* self, REFGUID guid, void** devi
     const bool mouse = IsEqualGUID(guid, kSysMouse) ||
         IsEqualGUID(guid, kSysMouseEm) ||
         IsEqualGUID(guid, kSysMouseEm2);
-    if (!mouse)
+    const bool keyboard = IsEqualGUID(guid, kSysKeyboard) ||
+        IsEqualGUID(guid, kSysKeyboardEm) ||
+        IsEqualGUID(guid, kSysKeyboardEm2);
+    if (!mouse && !keyboard)
     {
         return result;
     }
-    for (auto& slot : g_mouseDevices)
+    if (mouse)
     {
-        void* expected = nullptr;
-        if (slot.compare_exchange_strong(expected, *device))
-        {
-            break;
-        }
+        RememberDevice(g_mouseDevices, kMaximumMouseDevices, *device);
+    }
+    else
+    {
+        RememberDevice(g_keyboardDevices, kMaximumKeyboardDevices, *device);
     }
     // Wine gives all devices of one interface flavour the same vtable, so the
     // hooks are installed once and compare the device pointer.
@@ -206,9 +275,18 @@ HRESULT STDMETHODCALLTYPE HookCreateDevice(void* self, REFGUID guid, void** devi
     const bool patched =
         PatchSlot(g_getDeviceState, vtable, kDeviceGetDeviceStateSlot, reinterpret_cast<void*>(&HookGetDeviceState)) &&
         PatchSlot(g_getDeviceData, vtable, kDeviceGetDeviceDataSlot, reinterpret_cast<void*>(&HookGetDeviceData));
-    Log(patched
-        ? L"WinlatorXR: DirectInput mouse device observed; its data is filtered during VR gameplay."
-        : L"WinlatorXR: the DirectInput mouse device could not be hooked; the emulated mouse stays active.");
+    if (mouse)
+    {
+        Log(patched
+            ? L"WinlatorXR: DirectInput mouse device observed; its data is filtered during VR gameplay."
+            : L"WinlatorXR: the DirectInput mouse device could not be hooked; the emulated mouse stays active.");
+    }
+    else
+    {
+        Log(patched
+            ? L"WinlatorXR: DirectInput keyboard device observed; Enter is filtered during VR gameplay."
+            : L"WinlatorXR: the DirectInput keyboard device could not be hooked; Enter stays active.");
+    }
     return result;
 }
 
@@ -317,6 +395,13 @@ void InstallWinlatorXrDesktopMouseFilter(WinlatorXrMouseFilterLogCallback log) n
         return;
     }
     g_log = log;
+    wchar_t enterFilter[4] = {};
+    if (GetEnvironmentVariableW(L"BFVR_WINLATORXR_ENTER_FILTER", enterFilter, 4) == 1 &&
+        enterFilter[0] == L'0')
+    {
+        g_enterFilterEnabled.store(false);
+        Log(L"WinlatorXR: gameplay Enter filter disabled by BFVR_WINLATORXR_ENTER_FILTER=0.");
+    }
     void* previous = nullptr;
     if (!RouteExecutableImport(
             "dinput8.dll",
@@ -335,6 +420,11 @@ void InstallWinlatorXrDesktopMouseFilter(WinlatorXrMouseFilterLogCallback log) n
 void SetWinlatorXrDesktopMouseBlocked(bool blocked) noexcept
 {
     g_blocked.store(blocked);
+}
+
+void AllowWinlatorXrOwnEnterKey() noexcept
+{
+    g_ownEnterAllowedUntil.store(GetTickCount64() + winlatorxr::kOwnEnterAllowanceMs);
 }
 
 } // namespace bfvr

@@ -84,7 +84,8 @@ TROUBLESHOOTING
   - Blurry, squeezed 640x480 picture: the container screen size is not
     1792x1624. Fix it, delete BF1942\BFVR\quest-setup.done and start again.
   - A button also opens the map or the scoreboard: WinlatorXR types a game
-    key for it; check the controller mapping in step 4.
+    key for it; check the controller mapping in step 4. (A typed Enter is
+    ignored during gameplay, so it cannot open the spawn screen.)
   - Black screen with music after starting: close and start again.
   - Low fps: charge the headset above 50% (it throttles when low).
   - Reports: start BFVR-VR-debug.bat and send BFVR\logs\*.log and vr-logs.

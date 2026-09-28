@@ -1,5 +1,7 @@
+#include "winlatorxr/WinlatorXrKeyFilter.h"
 #include "winlatorxr/WinlatorXrProtocol.h"
 
+#include <array>
 #include <cmath>
 #include <cstdio>
 #include <string>
@@ -315,6 +317,41 @@ int main()
     passed &= Expect(
         Near(amplitudes[1], 1.0F),
         "a weaker hover must not cut a stronger running pulse");
+
+    // Keyboard filter: Enter from WinlatorXR's key mapping during gameplay.
+    passed &= Expect(
+        ShouldDropEnter(true, 1000, 0) && !ShouldDropEnter(false, 1000, 0) &&
+            !ShouldDropEnter(true, 1000, 1000 + 1) && ShouldDropEnter(true, 1751, 1751),
+        "Enter is dropped only in gameplay and outside BFVR's own Enter window");
+    std::array<std::uint8_t, 256> keys = {};
+    keys[kDikReturn] = 0x80;
+    keys[kDikNumpadEnter] = 0x80;
+    keys[0x12] = 0x80; // DIK_E
+    passed &= Expect(
+        ClearEnterKeys(keys.data(), keys.size()) && keys[kDikReturn] == 0 &&
+            keys[kDikNumpadEnter] == 0 && keys[0x12] == 0x80 &&
+            !ClearEnterKeys(keys.data(), keys.size()),
+        "the keyboard state releases only the Enter keys");
+    // DIDEVICEOBJECTDATA with DirectInput 8's 20-byte stride: offset first.
+    constexpr std::uint32_t stride = 20;
+    std::array<std::uint8_t, stride * 4> events = {};
+    const std::uint32_t offsets[4] = {0x12, kDikReturn, 0x39, kDikNumpadEnter};
+    for (std::uint32_t index = 0; index < 4; ++index)
+    {
+        std::memcpy(events.data() + index * stride, &offsets[index], sizeof(std::uint32_t));
+        events[index * stride + 4] = static_cast<std::uint8_t>(index + 1);
+    }
+    const std::uint32_t kept = RemoveEnterEvents(events.data(), stride, 4);
+    std::uint32_t first = 0;
+    std::uint32_t second = 0;
+    std::memcpy(&first, events.data(), sizeof(first));
+    std::memcpy(&second, events.data() + stride, sizeof(second));
+    passed &= Expect(
+        kept == 2 && first == 0x12 && events[4] == 1 && second == 0x39 && events[stride + 4] == 3,
+        "buffered Enter events are removed and the others keep their order and data");
+    passed &= Expect(
+        RemoveEnterEvents(events.data(), 2, 2) == 2,
+        "records too small to hold an offset are left alone");
 
     return passed ? 0 : 1;
 }

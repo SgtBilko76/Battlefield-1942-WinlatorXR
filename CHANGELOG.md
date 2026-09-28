@@ -18,6 +18,9 @@ the v1.0.2 section exactly as written below.
   there. The Quest controllers use the same button layout as PC VR, except
   that the left stick click toggles the map (WinlatorXR keeps the menu
   button). The Windows PC version is unchanged.
+- Quest: an Enter that WinlatorXR types for a controller button no longer
+  opens the spawn screen during gameplay; menus and the Quick Menu's Deploy
+  still use Enter. `BFVR_WINLATORXR_ENTER_FILTER=0` turns the filter off.
 - Quest: the download is now a WinlatorXR Dawn zip like the Crysis VR
   package: extract it into the game folder and import the container profile.
   The first start of a launcher runs the Quest game setup; later starts keep
