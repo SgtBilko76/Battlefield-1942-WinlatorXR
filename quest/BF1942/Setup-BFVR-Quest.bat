@@ -33,7 +33,7 @@ for %%F in (%SETTINGS%\Default\Video*.con) do call :appendsetting "%%F" "game.se
 
 echo.
 echo Done. Start BFVR-VR.bat, BFVR-VR-RoadToRome.bat or BFVR-VR-SecretWeapons.bat
-echo (or run Install-BFVR-Shortcut.bat once for shortcuts).
+echo (or the BFVR-VR shortcuts in WinlatorXR).
 goto :end
 
 :profile

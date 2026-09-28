@@ -15,10 +15,9 @@ left stick click as the map button.
 
 ### Updating from Beta 2
 
-1. Copy the zip's `BF1942` and `Winlator` folders over your existing ones.
-2. Set the container's **Screen size to 1792x1624**.
-3. Start the container and run `Setup-BFVR-Quest.bat` and
-   `Install-BFVR-Shortcut.bat` once more.
+Set the container's **Screen size to 1792x1624**, then run the new
+`install.cmd` as in step 4 below. Your VR settings are kept. The old
+`Download/Winlator/BFVR-VR*.desktop` files are no longer used.
 
 ## Requirements
 
@@ -30,13 +29,14 @@ left stick click as the map button.
 
 ## Install
 
+The download is an installer folder, like the Far Cry VR mod's:
+`install.cmd` runs inside the container and does everything except the
+WinlatorXR settings. `README_INSTALL.txt` in the zip has the same steps.
+
 1. Install the MoonGamers package on a PC and copy its complete
    `Battlefield 1942` folder to the headset as `Download/BF1942`
    (so `BF1942.exe` is at `Download/BF1942/BF1942.exe`).
-2. Copy the contents of this zip's `BF1942` folder into `Download/BF1942`
-   (this adds `BFVR/`, the `.bat` files and `dxvk.conf`), and this zip's
-   `Winlator` folder to `Download/Winlator`.
-3. In WinlatorXR create a container (these settings were tested):
+2. In WinlatorXR create a container (these settings were tested):
    - Screen size **1792x1624** (one eye; the launchers use alternate-eye
      rendering, so each frame draws one eye into the whole window).
    - Drive `D:` = `/sdcard/Download`.
@@ -54,31 +54,34 @@ left stick click as the map button.
    - Keep "Use XR controller as mouse" on (menus use it; BFVR blocks it in
      gameplay).
    - In WinlatorXR's XR settings set the CPU level to the highest value.
-4. Start the container and run `D:\BF1942\Setup-BFVR-Quest.bat` once. It
-   backs up every file it changes (`*.bfvr-backup`) and:
-   - installs BFVR's Direct3D 8 translator as the game's `D3D8.dll`;
-   - disables the intro movies, including the expansions' intro and legal
-     clips (black under WinlatorXR);
-   - switches to software sound (hardware sound crashes the game there);
-   - sets 1792x1624, texture quality 3, 60% view distance and normal object
-     detail distance.
+3. Copy the zip's `BFVR-Quest-Installer-Beta3` folder to `Download` (for
+   example as `Download/BFVR-Setup`).
+4. Start the container and run `D:\BFVR-Setup\install.cmd` from the file
+   manager. Accept `D:\BF1942` (or type your folder, without spaces) and the
+   container number WinlatorXR shows (default 3). The installer:
+   - copies `BFVR\`, the launchers and `dxvk.conf` into the game folder
+     (an existing `BFVR\UserConfig.txt` is kept);
+   - runs `Setup-BFVR-Quest.bat`, which backs up every file it changes
+     (`*.bfvr-backup`), installs BFVR's Direct3D 8 translator as the game's
+     `D3D8.dll`, disables the intro movies (including the expansions' intro
+     and legal clips, black under WinlatorXR), switches to software sound
+     (hardware sound crashes the game there) and sets 1792x1624, texture
+     quality 3, 60% view distance and normal object detail distance;
+   - adds the shortcuts **BFVR-VR**, **BFVR-VR-RoadToRome** and
+     **BFVR-VR-SecretWeapons** to WinlatorXR's Shortcuts tab.
    Keep detail textures on: turning them off crashes map loading on the
    Quest.
-5. Optional: run `D:\BF1942\Install-BFVR-Shortcut.bat` once; WinlatorXR's
-   Shortcuts tab then shows **BFVR-VR**, **BFVR-VR-RoadToRome** and
-   **BFVR-VR-SecretWeapons**. The shortcuts expect container 3; edit
-   `container_id` in the `Download/Winlator/BFVR-VR*.desktop` files otherwise.
 
 If you use another screen size, change `SCREEN_W`/`SCREEN_H` in
-`Setup-BFVR-Quest.bat` and `screenSize` in the `BFVR-VR*.desktop` files to
-match. Keep the container's own screen size the same: a `.bat` started from
-the file manager uses it, and if the game's resolution does not fit, BF1942
+`Setup-BFVR-Quest.bat` and `screenSize` in the shortcuts to match, and set
+the container to the same size: a `.bat` started from the file manager uses
+the container's size, and if the game's resolution does not fit, BF1942
 falls back to 640x480 and saves that to its profile (run
 `Setup-BFVR-Quest.bat` again to restore it).
 
 ## Play
 
-Start `D:\BF1942\BFVR-VR.bat` (or the BFVR-VR shortcut). The expansions start
+Start the **BFVR-VR** shortcut (or `D:\BF1942\BFVR-VR.bat`). The expansions start
 with `BFVR-VR-RoadToRome.bat` (*The Road to Rome*) and
 `BFVR-VR-SecretWeapons.bat` (*Secret Weapons of WWII*); they are part of the
 MoonGamers package and share the base game's settings. The first start
