@@ -4,8 +4,8 @@ rem for WinlatorXR. Run it inside the WinlatorXR container from the game
 rem folder (D:\BF1942). Every changed file is backed up once as *.bfvr-backup.
 rem The resolution below must match the container's screen size.
 setlocal EnableExtensions
-set SCREEN_W=3120
-set SCREEN_H=1430
+set SCREEN_W=1792
+set SCREEN_H=1624
 cd /d "%~dp0"
 if not exist BF1942.exe goto :wrongfolder
 if not exist BFVR\BFVRD3D8To9.dll goto :nopayload

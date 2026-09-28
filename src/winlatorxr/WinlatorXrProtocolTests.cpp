@@ -168,28 +168,30 @@ int main()
             (right.buttons & shared::kControllerHandButtonPrimary) != 0 &&
             (right.buttons & shared::kControllerHandButtonThumbstick) != 0 &&
             (right.buttons & shared::kControllerHandButtonMenu) == 0,
-        "X/Y and B keep their meaning; the left stick click holds the Quick Menu");
+        "X/Y, A and B keep their meaning; the left stick click also holds the Quick Menu");
     InputState pressA = state;
     pressA.buttons.buttonA = true;
     pressA.buttons.leftTrigger = false;
     pressA.buttons.leftThumbstick = false;
+    pressA.buttons.buttonB = false;
     shared::SharedControllerSample useSample;
     BuildControllerSample(pressA, 12345, useSample);
     passed &= Expect(
         useSample.hands[0].triggerValue == 0.0F &&
-            (useSample.hands[1].buttons & shared::kControllerHandButtonQuestA) != 0 &&
-            (useSample.hands[1].buttons & shared::kControllerHandButtonPrimary) == 0,
-        "A is reported on its own and does not open the Quick Menu");
+            (useSample.hands[1].buttons & shared::kControllerHandButtonPrimary) != 0 &&
+            (useSample.hands[1].buttons & shared::kControllerHandButtonSecondary) == 0,
+        "A keeps its PC meaning as the right primary button");
     InputState leftTriggerOnly = state;
     leftTriggerOnly.buttons.rightGrip = false;
     leftTriggerOnly.buttons.buttonA = false;
     leftTriggerOnly.buttons.leftTrigger = true;
+    leftTriggerOnly.buttons.leftThumbstick = false;
     shared::SharedControllerSample triggerSample;
     BuildControllerSample(leftTriggerOnly, 12345, triggerSample);
     passed &= Expect(
         triggerSample.hands[0].triggerValue == 1.0F &&
             triggerSample.hands[1].squeezeValue == 0.0F &&
-            (triggerSample.hands[1].buttons & shared::kControllerHandButtonQuestA) == 0,
+            (triggerSample.hands[1].buttons & shared::kControllerHandButtonPrimary) == 0,
         "the left trigger is use and not secondary fire");
     passed &= Expect(
         Near(right.thumbstickX, 1.0F) && Near(left.thumbstickY, -0.5F),

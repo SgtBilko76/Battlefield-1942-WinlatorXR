@@ -16,9 +16,14 @@ the v1.0.2 section exactly as written below.
   Quick Menu (hold right A), VR Settings, the "Back to game" button, comfort
   and death-camera vignettes, color profiles and the kill sound also work
   there. On the headset, the left trigger is "use", holding the left stick
-  click opens the Quick Menu, A reloads, and a short B press selects
-  the next weapon (holding B still recenters). The Windows PC
-  version is unchanged.
+  click also opens the Quick Menu, and A and B work as on the PC (B reloads,
+  holding B recenters). The Windows PC version is unchanged.
+- Quest: the launchers now use alternate-eye rendering
+  (`BFVR_WINLATORXR_AER=1`) with a 1792x1624 WinlatorXR screen, one eye per
+  frame, instead of side by side at 3120x1430.
+- Quest: BF1942 now accepts the WinlatorXR screen size as its display mode.
+  Wine's virtual desktop left that size out of the mode list, so the game
+  fell back to 640x480 and the view looked squeezed and blurry.
 
 ## [1.0.2]
 

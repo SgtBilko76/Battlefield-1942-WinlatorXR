@@ -3,7 +3,7 @@ cd /d D:\BF1942\BFVR
 set BFVR_DIAGNOSTICS=off
 rem WinlatorXR options: HUD size per eye (0.3-1.0), alternate-eye rendering (1 on, 0 side by side)
 set BFVR_WINLATORXR_HUD_SCALE=0.36
-set BFVR_WINLATORXR_AER=0
+set BFVR_WINLATORXR_AER=1
 rem Field of view in degrees for rendering and display (empty = headset default)
 set BFVR_WINLATORXR_FOV=110
 rem DXVK options (anisotropic filtering); DXVK writes only warnings to vr-logs

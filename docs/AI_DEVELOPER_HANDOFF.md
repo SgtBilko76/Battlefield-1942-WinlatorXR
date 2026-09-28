@@ -276,12 +276,11 @@ These are established behaviors, not cleanup opportunities.
   it during BF1942's startup once hung the game.
 - Quest button layout (owner request, in `winlatorxr::BuildControllerSample`):
   the left stick click is reported as the right primary button (Quick Menu /
-  VR Settings click) and A as `kControllerHandButtonQuestA`. Under WinlatorXR
-  `ControllerInputOverlay` turns an A press into reload and a
-  B press shorter than 600 ms into one mouse-wheel notch that the DirectInput
-  mouse filter reports to the game (BF1942 resolves the wheel before its
-  per-frame player input, whose normalizer `FUN_004913a0` drops
-  `c_PINextItem`, input 46); holding B still recenters. WinlatorXR itself
+  VR Settings click) in addition to A. A and B keep the PC meaning (B reloads,
+  held B recenters). A short-B "next weapon" existed briefly; it was removed
+  at the owner's request. It had to be a mouse-wheel notch injected by the
+  DirectInput mouse filter, because BF1942's per-frame input normalizer
+  `FUN_004913a0` drops `c_PINextItem` (input 46). WinlatorXR itself
   toggles its 3DoF "immersive" screen on a left stick click while no game
   requests head tracking (native menus).
 - Headset notes: side-by-side (`BFVR_WINLATORXR_AER=0`) felt much smoother
@@ -294,6 +293,11 @@ These are established behaviors, not cleanup opportunities.
   side-by-side eye is roughly square), HUD scale 0.36, DXVK async on, BF1942 texture quality 3, and 16x
   anisotropic filtering through a `dxvk.conf` next to the game that the
   launch script names in `DXVK_CONFIG_FILE`.
+  Since then the launchers default to alternate-eye (`BFVR_WINLATORXR_AER=1`)
+  at a 1792x1624 screen, which the owner found sharp with a good frame rate.
+  Wine's virtual desktop omitted that size from the D3D mode list, so BF1942
+  fell back to 640x480 (and rewrote the profile's `Video.con`); the d3d8to9
+  constructor now appends the current desktop mode when it is missing.
   `WinlatorXrWatchdog` also writes `BFVR\logs\watchdog.log` when diagnostics
   are off; an intermittent early freeze (main thread idle after the first
   composed frame) is still unexplained.

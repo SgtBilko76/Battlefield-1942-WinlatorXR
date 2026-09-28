@@ -29,7 +29,8 @@ of WWII*.
    (this adds `BFVR/`, the `.bat` files and `dxvk.conf`), and this zip's
    `Winlator` folder to `Download/Winlator`.
 3. In WinlatorXR create a container (these settings were tested):
-   - Screen size **3120x1430** (side-by-side needs about 2.2:1).
+   - Screen size **1792x1624** (one eye; the launchers use alternate-eye
+     rendering, so each frame draws one eye into the whole window).
    - Drive `D:` = `/sdcard/Download`.
    - Wine `proton-9.0-x86_64`, Box64.
    - DX wrapper **DXVK 1.10.x** with **Async** on. Newer DXVK versions of the
@@ -51,7 +52,7 @@ of WWII*.
    - disables the intro movies, including the expansions' intro and legal
      clips (black under WinlatorXR);
    - switches to software sound (hardware sound crashes the game there);
-   - sets 3120x1430, texture quality 3, 60% view distance and normal object
+   - sets 1792x1624, texture quality 3, 60% view distance and normal object
      detail distance.
    Keep detail textures on: turning them off crashes map loading on the
    Quest.
@@ -80,8 +81,8 @@ Controls:
 | Right trigger | Fire |
 | Right grip | Secondary fire |
 | Left trigger | Use |
-| A | Reload |
-| B (short press) | Next weapon |
+| A (hold) | Quick Menu, like the left stick click |
+| B | Reload |
 | B (hold 2 s) | Recenter |
 | Left stick | Move |
 | Right stick | Turn (snap turn in VR Settings), up jump, down crouch |
@@ -95,7 +96,8 @@ The Quick Menu also opens VR Settings (turning, HUD, comfort vignette, color
 profile, kill sound and more).
 
 `BFVR-VR.bat` options: `BFVR_WINLATORXR_HUD_SCALE` (HUD size, 0.3–1.0),
-`BFVR_WINLATORXR_AER` (0 side by side, 1 alternate eye) and
+`BFVR_WINLATORXR_AER` (1 alternate eye, the default in the launchers; 0 side
+by side, which needs a screen twice as wide, e.g. 3584x1624) and
 `BFVR_WINLATORXR_FOV` (degrees). `dxvk.conf` enables 16x anisotropic
 filtering.
 

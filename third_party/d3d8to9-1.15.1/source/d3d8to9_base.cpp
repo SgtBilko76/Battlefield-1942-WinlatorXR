@@ -36,6 +36,30 @@ Direct3D8::Direct3D8(IDirect3D9 *ProxyInterface) :
 				CurrentAdapterModeCount[Adapter]++;
 			}
 		}
+
+		// BFVR: Wine's virtual desktop (WinlatorXR) may leave its own size out
+		// of the mode list, and BF1942 then falls back to 640x480. BFVR
+		// presents windowed, so the current desktop mode is always usable.
+		D3DDISPLAYMODE Desktop = {};
+		if (SUCCEEDED(ProxyInterface->GetAdapterDisplayMode(Adapter, &Desktop)) &&
+			Desktop.Width != 0 && Desktop.Height != 0)
+		{
+			bool Listed = false;
+			for (const D3DDISPLAYMODE &Listed8 : CurrentAdapterModes[Adapter])
+			{
+				if (Listed8.Width == Desktop.Width && Listed8.Height == Desktop.Height &&
+					Listed8.Format == Desktop.Format)
+				{
+					Listed = true;
+					break;
+				}
+			}
+			if (!Listed)
+			{
+				CurrentAdapterModes[Adapter].push_back(Desktop);
+				CurrentAdapterModeCount[Adapter]++;
+			}
+		}
 	}
 }
 Direct3D8::~Direct3D8()
