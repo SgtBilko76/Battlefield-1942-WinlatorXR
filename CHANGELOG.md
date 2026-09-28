@@ -15,9 +15,9 @@ the v1.0.2 section exactly as written below.
   `BFVR_WINLATORXR_EYE_SIZE=WIDTHxHEIGHT` to change the per-eye size. The
   Quick Menu (hold right A), VR Settings, the "Back to game" button, comfort
   and death-camera vignettes, color profiles and the kill sound also work
-  there. On the headset, the left trigger is "use", holding the left stick
-  click also opens the Quick Menu, and A and B work as on the PC (B reloads,
-  holding B recenters). The Windows PC version is unchanged.
+  there. The Quest controllers use the same button layout as PC VR, except
+  that the left stick click toggles the map (WinlatorXR keeps the menu
+  button). The Windows PC version is unchanged.
 - Quest: the launchers now use alternate-eye rendering
   (`BFVR_WINLATORXR_AER=1`) with a 1792x1624 WinlatorXR screen, one eye per
   frame, instead of side by side at 3120x1430.

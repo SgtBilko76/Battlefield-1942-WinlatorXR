@@ -401,6 +401,13 @@ void WinlatorXrMenuOverlay::Dispatch(
         stereo::QuickMenuSelectionName(selection));
 }
 
+void WinlatorXrMenuOverlay::ToggleNativeMap()
+{
+    Log(SendForegroundKeyPress('M')
+            ? L"Map button sent BF1942's M key."
+            : L"Map button suppressed its key (BF1942 not foreground or SendInput failed).");
+}
+
 void WinlatorXrMenuOverlay::DispatchPendingRadioKey()
 {
     if (pendingRadioKey_ == 0 || GetTickCount64() < pendingRadioDueAt_)

@@ -60,6 +60,8 @@ public:
         bool mountedCameraDecoupled,
         WinlatorXrMenuActions& actions);
     void SetForwardRecenterResult(bool succeeded) noexcept;
+    // Sends BF1942's map key (M), like the PC presenter's Map action.
+    void ToggleNativeMap();
 
     [[nodiscard]] bool IsVisible() const noexcept;
 

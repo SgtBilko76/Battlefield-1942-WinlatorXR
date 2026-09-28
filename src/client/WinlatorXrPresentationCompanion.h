@@ -138,6 +138,7 @@ private:
     bool hapticCountersInitialized_ = false;
     bool composeFailureLogged_ = false;
     bool firstComposeLogged_ = false;
+    bool leftMenuWasDown_ = false;
     bool effectsLogged_ = false;
     bool effectsFailureLogged_ = false;
     ULONGLONG lastHandLogMs_ = 0;

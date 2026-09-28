@@ -274,11 +274,14 @@ These are established behaviors, not cleanup opportunities.
   violations, because no debugger can be attached there without disabling
   BFVR's CreateDevice hook. Menu art loads 10 s after the first frame; loading
   it during BF1942's startup once hung the game.
-- Quest button layout (owner request, in `winlatorxr::BuildControllerSample`):
-  the left stick click is reported as the right primary button (Quick Menu /
-  VR Settings click) in addition to A. A and B keep the PC meaning (B reloads,
-  held B recenters). A short-B "next weapon" existed briefly; it was removed
-  at the owner's request. It had to be a mouse-wheel notch injected by the
+- Quest button layout (owner request, `winlatorxr::BuildControllerSample`):
+  the Quest controllers use the PC VR layout, except that the left stick
+  click is reported as the left Menu (map) button, because WinlatorXR keeps
+  the Quest menu button (Esc); `WinlatorXrPresentationCompanion` sends M on
+  its press edge like the PC presenter. A Quest-only layout
+  (left stick click as Quick Menu, A reload, short B next weapon) existed
+  briefly and was removed at the owner's request. Its next weapon had to be a
+  mouse-wheel notch injected by the
   DirectInput mouse filter, because BF1942's per-frame input normalizer
   `FUN_004913a0` drops `c_PINextItem` (input 46). WinlatorXR itself
   toggles its 3DoF "immersive" screen on a left stick click while no game

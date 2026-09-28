@@ -159,16 +159,25 @@ int main()
         "trigger and grip buttons must become full analog values");
     passed &= Expect(
         left.triggerValue == 1.0F,
-        "the left trigger is use in the Quest layout");
+        "the left trigger is use, as on PC");
     passed &= Expect(
         (left.buttons & shared::kControllerHandButtonPrimary) != 0 &&
             (left.buttons & shared::kControllerHandButtonThumbstick) == 0 &&
+            (left.buttons & shared::kControllerHandButtonMenu) != 0 &&
             (left.buttons & shared::kControllerHandButtonSecondary) == 0 &&
             (right.buttons & shared::kControllerHandButtonSecondary) != 0 &&
-            (right.buttons & shared::kControllerHandButtonPrimary) != 0 &&
+            (right.buttons & shared::kControllerHandButtonPrimary) == 0 &&
             (right.buttons & shared::kControllerHandButtonThumbstick) != 0 &&
             (right.buttons & shared::kControllerHandButtonMenu) == 0,
-        "X/Y, A and B keep their meaning; the left stick click also holds the Quick Menu");
+        "the Quest buttons follow the PC VR layout; the left stick click is the map button");
+    InputState questMenu = state;
+    questMenu.buttons.leftThumbstick = false;
+    questMenu.buttons.leftMenu = true;
+    shared::SharedControllerSample questMenuSample;
+    BuildControllerSample(questMenu, 12345, questMenuSample);
+    passed &= Expect(
+        (questMenuSample.hands[0].buttons & shared::kControllerHandButtonMenu) == 0,
+        "the Quest menu button stays with WinlatorXR and does not toggle the map");
     InputState pressA = state;
     pressA.buttons.buttonA = true;
     pressA.buttons.leftTrigger = false;

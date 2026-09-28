@@ -220,6 +220,7 @@ void WinlatorXrPresentationCompanion::Stop()
     hapticCountersInitialized_ = false;
     composeFailureLogged_ = false;
     firstComposeLogged_ = false;
+    leftMenuWasDown_ = false;
 }
 
 void WinlatorXrPresentationCompanion::PublishRequirements(
@@ -748,6 +749,15 @@ void WinlatorXrPresentationCompanion::UpdateMenus(
     input.rightAimPose = toPose(right.aimPose);
     input.standingHeightValid = views.standingHeightValid;
     input.standingHeightMeters = views.standingHeightMeters;
+
+    // The left menu button is the PC VR map toggle; BFVR's own panels keep it.
+    const bool leftMenuDown =
+        (sample.hands[0].buttons & shared::kControllerHandButtonMenu) != 0;
+    if (leftMenuDown && !leftMenuWasDown_ && input.sessionFocused && !menus_.IsVisible())
+    {
+        menus_.ToggleNativeMap();
+    }
+    leftMenuWasDown_ = leftMenuDown;
 
     WinlatorXrMenuActions actions;
     menus_.Update(

@@ -81,7 +81,7 @@ Controls:
 | Right trigger | Fire |
 | Right grip | Secondary fire |
 | Left trigger | Use |
-| A (hold) | Quick Menu, like the left stick click |
+| A (hold) | Quick Menu; point with the right hand, release to choose |
 | B | Reload |
 | B (hold 2 s) | Recenter |
 | Left stick | Move |
@@ -89,8 +89,8 @@ Controls:
 | X | Prone |
 | Y (hold) | Scoreboard |
 | Left grip (near the weapon) | Hold the weapon with both hands |
-| Left stick click (hold) | Quick Menu; point with the right hand, release to choose |
-| Left menu button | Game menu |
+| Left stick click | Map (on foot and in vehicles) |
+| Left menu button | Game menu (WinlatorXR sends Esc) |
 
 The Quick Menu also opens VR Settings (turning, HUD, comfort vignette, color
 profile, kill sound and more).
@@ -112,7 +112,6 @@ filtering.
   stopped; please include it in reports.
 - Two-hand weapon grip does not always attach; hold the left grip closer to
   the weapon's front grip.
-- The left stick click no longer pitches aircraft up.
 - A left stick click in a native menu also toggles WinlatorXR's 3DoF mode.
 - Not available on the Quest: ambient occlusion, bloom, reflections, FXAA and
   the separate scope layer.

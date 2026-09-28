@@ -475,9 +475,9 @@ void BuildControllerSample(
     }
     sample.flags = shared::kControllerSampleFlagSessionFocused;
     const Buttons& buttons = state.buttons;
-    // Quest layout: the left trigger is "use", and the left stick click also
-    // holds the Quick Menu (BFVR's right primary). A and B keep the PC
-    // meaning: A is the right primary, B reloads and held B recenters.
+    // The Quest controllers use the PC VR layout, except that the left stick
+    // click is the left menu (map) button: WinlatorXR keeps the Quest menu
+    // button itself (Esc, the game menu).
     BuildHand(
         state.left,
         state.hasGripOrientation,
@@ -485,7 +485,7 @@ void BuildControllerSample(
         buttons.leftGrip,
         buttons.buttonX,
         buttons.buttonY,
-        buttons.leftMenu,
+        buttons.leftThumbstick,
         false,
         sample.hands[0]);
     BuildHand(
@@ -493,7 +493,7 @@ void BuildControllerSample(
         state.hasGripOrientation,
         buttons.rightTrigger,
         buttons.rightGrip,
-        buttons.buttonA || buttons.leftThumbstick,
+        buttons.buttonA,
         buttons.buttonB,
         false,
         buttons.rightThumbstick,
