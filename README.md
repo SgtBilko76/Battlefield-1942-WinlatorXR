@@ -65,9 +65,23 @@ troubleshooting, and uninstalling.
 
 ## Meta Quest standalone (beta)
 
-An experimental standalone build runs on Meta Quest 3 inside WinlatorXR. See
+An experimental standalone build runs on Meta Quest 3 inside WinlatorXR, with
+a full 1792x1624 image per eye and the same controls as PC VR. See
 [docs/QUEST_BETA.md](docs/QUEST_BETA.md) for requirements, setup, controls and
 known issues.
+
+**Download: [BFVR Quest Beta 3](https://github.com/SgtBilko76/Battlefield-1942-WinlatorXR/releases/tag/quest-beta3)**
+
+- [BFVR-Quest-Dawn-Beta3.zip](https://github.com/SgtBilko76/Battlefield-1942-WinlatorXR/releases/download/quest-beta3/BFVR-Quest-Dawn-Beta3.zip)
+  for **WinlatorXR Dawn**: extract it into your `BF1942` folder, create a
+  shortcut for `D:\BF1942\BFVR\BFVR.exe` and import the included shortcut
+  profile.
+- [BFVR-Quest-Installer-Beta3.zip](https://github.com/SgtBilko76/Battlefield-1942-WinlatorXR/releases/download/quest-beta3/BFVR-Quest-Installer-Beta3.zip)
+  for the **WinlatorXR cats** builds (cats-27): set up the container and run
+  `install.cmd` inside it.
+
+You need your own Battlefield 1942 from the MoonGamers "BF1942 & Expansions"
+package (dgVoodoo version); no game files are included.
 
 ## Important safety information
 
