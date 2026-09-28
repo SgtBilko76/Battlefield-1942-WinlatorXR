@@ -1,0 +1,26 @@
+{
+  "format": "winlatorxr-shortcut-profile",
+  "version": 1,
+  "game": "BFVR-VR",
+  "container": "BF1942",
+  "wineVersion": "proton-9.0-x86_64",
+  "device": "Quest 3",
+  "settings": {
+    "container_id": "3",
+    "screenSize": "1792x1624",
+    "execArgs": "\/c D:\\BF1942\\BFVR-VR.bat",
+    "box64Version": "0.4.2",
+    "graphicsDriver": "wrapper",
+    "graphicsDriverConfig": "version=adrenotools-v819.2_Quest3_Pico4Ultra;blacklistedExtensions=;maxDeviceMemory=0;adrenotoolsTurnip=1;frameSync=Never",
+    "dxwrapper": "dxvk",
+    "ddrawrapper": "dd7to9-v1.7",
+    "dxwrapperConfig": "version=2.6.2-gplasync-1,framerate=0,maxDeviceMemory=0,async=1,asyncCache=1,vkd3dVersion=2.12-0,vkd3dLevel=12_1",
+    "audioDriver": "pulseaudio",
+    "emulator": "box64",
+    "box64Preset": "PERFORMANCE",
+    "rcfileId": "0",
+    "fexcoreVersion": "2605",
+    "startupSelection": "1",
+    "cpuList": "0,1,2,3,4,5"
+  }
+}

@@ -18,8 +18,9 @@ WHAT IS IN HERE
   Install-BFVR-Shortcut.bat, Winlator\
                         adds the three BFVR shortcuts to WinlatorXR
   dxvk.conf             16x anisotropic filtering
-  BFVR - proton-9.0-x86_64 - Quest 3.wxrprofile.json
-                        the container settings, ready to import into Dawn
+  BFVR-VR*.wxrprofile.json
+                        the tested container settings, one per shortcut,
+                        ready to import into Dawn
 
 
 INSTALL
@@ -35,10 +36,11 @@ INSTALL
      BF1942\Setup-BFVR-Quest.bat
 
 3. In WinlatorXR Dawn create a container (drive D: = /sdcard/Download) and
-   import the profile: copy the .wxrprofile.json to
+   import the profiles: copy the three .wxrprofile.json files to
      /sdcard/Download/Winlator/WxrProfiles/
-   and import it in the container settings. It sets the screen size
-   (1792x1624), DXVK 1.10 with async, the graphics driver and Box64.
+   and import them in the shortcut settings (after step 5). They set the
+   screen size (1792x1624), DXVK 2.6.2-gplasync with async, the Turnip
+   wrapper driver and Box64 (Performance preset). They expect container 3.
 
 4. XR controller mapping: give every button a numpad key the game does not
    use (KEY_NONE is not kept, WinlatorXR restores keys the game would read):

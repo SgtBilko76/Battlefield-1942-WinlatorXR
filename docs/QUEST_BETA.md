@@ -39,13 +39,16 @@ contains. `README_DAWN.txt` in the zip has the same steps.
 2. Extract everything from the zip into `Download/BF1942` (this adds
    `BFVR/`, the `.bat` files, `Winlator/` and `dxvk.conf`).
 3. In WinlatorXR create a container with drive `D:` = `/sdcard/Download`,
-   copy the zip's `.wxrprofile.json` to `Download/Winlator/WxrProfiles/` and
-   import it in the container settings. It sets the tested settings:
+   copy the zip's three `.wxrprofile.json` files (one per shortcut) to
+   `Download/Winlator/WxrProfiles/` and import them once the shortcuts exist
+   (step 5). They carry the tested settings (container 3):
    - Screen size **1792x1624** (one eye; the launchers use alternate-eye
      rendering, so each frame draws one eye into the whole window).
    - Wine `proton-9.0-x86_64`, Box64.
-   - DX wrapper **DXVK 1.10.x** with **Async** on. Newer DXVK versions of the
-     Direct3D 8 wrapper fail on the Quest; BFVR only needs DXVK's Direct3D 9.
+   - DX wrapper **DXVK 2.6.2-gplasync** with **Async** on, graphics driver
+     wrapper (Turnip), Box64 preset Performance. BFVR translates Direct3D 8
+     itself and only needs DXVK's Direct3D 9; DXVK's own Direct3D 8 wrapper
+     fails on the Quest.
 4. XR controller mapping: give every button a key Battlefield 1942 does not
    use. `KEY_NONE` does not stay saved (WinlatorXR restores its defaults A,
    B, X, Y, Space, Enter and the arrow keys, which the game would receive in
