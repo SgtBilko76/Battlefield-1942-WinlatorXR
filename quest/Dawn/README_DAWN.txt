@@ -3,24 +3,19 @@ BFVR - BATTLEFIELD 1942 VR - WinlatorXR DAWN PACKAGE - BETA 3
 
 Battlefield 1942 in VR, standalone on Meta Quest 3 through WinlatorXR Dawn.
 You need your own copy of the MoonGamers "BF1942 & Expansions" package
-(dgVoodoo version). No game files are included.
+(dgVoodoo version). No game files are included. On the WinlatorXR cats
+builds use BFVR-Quest-Installer-Beta3.zip instead (it has install.cmd).
 
 
 WHAT IS IN HERE
 ---------------
-  BFVR\                 the VR mod (BFVR.exe, BFVRClient.dll, translator,
-                        menu art)
-  BFVR-VR.bat           launcher; BFVR-VR-RoadToRome.bat and
-                        BFVR-VR-SecretWeapons.bat start the expansions,
-                        BFVR-VR-debug.bat writes logs for reports
-  Setup-BFVR-Quest.bat  one-time game setup; the launchers run it by
-                        themselves on their first start
-  Install-BFVR-Shortcut.bat, Winlator\
-                        adds the three BFVR shortcuts to WinlatorXR
+  BFVR\                 the VR mod: BFVR.exe (the launcher), BFVRClient.dll,
+                        the Direct3D 8 translator and the menu art
   dxvk.conf             16x anisotropic filtering
   BFVR-VR*.wxrprofile.json
-                        the tested container settings, one per shortcut,
-                        ready to import into Dawn
+                        the tested shortcut settings, ready to import into
+                        Dawn: BFVR-VR (base game), BFVR-VR-RoadToRome and
+                        BFVR-VR-SecretWeapons
 
 
 INSTALL
@@ -32,15 +27,17 @@ INSTALL
 
 2. Extract everything from this zip INTO that folder, so that you get
      BF1942\BFVR\BFVR.exe
-     BF1942\BFVR-VR.bat
-     BF1942\Setup-BFVR-Quest.bat
+     BF1942\dxvk.conf
 
-3. In WinlatorXR Dawn create a container (drive D: = /sdcard/Download) and
-   import the profiles: copy the three .wxrprofile.json files to
+3. In WinlatorXR Dawn (drive D: = /sdcard/Download) create a shortcut for
+     D:\BF1942\BFVR\BFVR.exe
+   Copy the .wxrprofile.json files to
      /sdcard/Download/Winlator/WxrProfiles/
-   and import them in the shortcut settings (after step 5). They set the
-   screen size (1792x1624), DXVK 2.6.2-gplasync with async, the Turnip
-   wrapper driver and Box64 (Performance preset). They expect container 3.
+   and import BFVR-VR in the shortcut's settings. It sets the screen size
+   (1792x1624), DXVK 2.6.2-gplasync with async, the Turnip wrapper driver
+   and Box64. For the expansions make two more shortcuts to the same
+   BFVR.exe and import BFVR-VR-RoadToRome / BFVR-VR-SecretWeapons (they add
+   the launch arguments --play -- +game XPack1 / XPack2).
 
 4. XR controller mapping: give every button a numpad key the game does not
    use (KEY_NONE is not kept, WinlatorXR restores keys the game would read):
@@ -52,15 +49,12 @@ INSTALL
    Keep "Use XR controller as mouse" on, and set the CPU level to the
    highest value in the XR settings.
 
-5. Start the container and run D:\BF1942\Install-BFVR-Shortcut.bat once from
-   the file manager. The Shortcuts tab then shows BFVR-VR,
-   BFVR-VR-RoadToRome and BFVR-VR-SecretWeapons (they expect container 3;
-   change container_id in BF1942\Winlator\*.desktop first otherwise).
-
-6. Put the headset ON, then start BFVR-VR. The first start runs the game
-   setup (backs up every file it changes as *.bfvr-backup, installs BFVR's
-   translator as D3D8.dll, turns off the intro movies, switches to software
-   sound, sets 1792x1624) and takes a few minutes. Native menus appear on
+5. Put the headset ON, then start the shortcut. BFVR sets the game folder up
+   by itself on the first start (backs up every file it changes as
+   *.bfvr-backup, installs its translator as D3D8.dll, turns off the
+   expansions' intro clips, switches to software sound and Quest video
+   settings) and matches the game's resolution to the screen size on every
+   start. The first start takes a few minutes. Native menus appear on
    WinlatorXR's flat screen; gameplay is head tracked.
 
 UPDATING: extract the new zip over the folder again. Your VR settings
@@ -81,14 +75,12 @@ CONTROLS (same as PC VR)
 
 TROUBLESHOOTING
 ---------------
-  - Blurry, squeezed 640x480 picture: the container screen size is not
-    1792x1624. Fix it, delete BF1942\BFVR\quest-setup.done and start again.
   - A button also opens the map or the scoreboard: WinlatorXR types a game
     key for it; check the controller mapping in step 4. (A typed Enter is
     ignored during gameplay, so it cannot open the spawn screen.)
   - Black screen with music after starting: close and start again.
   - Low fps: charge the headset above 50% (it throttles when low).
-  - Reports: start BFVR-VR-debug.bat and send BFVR\logs\*.log and vr-logs.
+  - Reports: send BFVR\loader.log and BFVR\logs\watchdog.log.
 
 Battlefield 1942 is (C) Electronic Arts / DICE.
-BFVR: https://github.com/SgtBilko76/BFVR-Battlefield-1942-VR-Mod
+BFVR: https://github.com/SgtBilko76/Battlefield-1942-WinlatorXR

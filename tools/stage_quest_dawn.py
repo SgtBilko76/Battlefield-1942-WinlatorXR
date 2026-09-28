@@ -7,7 +7,8 @@ Usage:
 WIN32_BUILD holds BFVR.exe, BFVRClient.dll and BFVRD3D8To9.dll. The package
 is created as DESTINATION_DIR/NAME/ and DESTINATION_DIR/NAME.zip; existing
 output is never overwritten. The zip is extracted INTO the Battlefield 1942
-folder, so its files sit at the top level (see quest/README.md).
+folder, so its files sit at the top level and are zipped without a
+wrapping folder (see quest/README.md).
 """
 
 import shutil
@@ -17,15 +18,9 @@ from pathlib import Path
 
 SOURCE = Path(__file__).resolve().parent.parent
 BINARIES = ("BFVR.exe", "BFVRClient.dll", "BFVRD3D8To9.dll")
-QUEST_FILES = (
-    "BFVR-VR.bat",
-    "BFVR-VR-RoadToRome.bat",
-    "BFVR-VR-SecretWeapons.bat",
-    "BFVR-VR-debug.bat",
-    "Setup-BFVR-Quest.bat",
-    "Install-BFVR-Shortcut.bat",
-    "dxvk.conf",
-)
+# No batch files: BFVR.exe applies the game setup itself on WinlatorXR, and
+# the Dawn shortcut profiles start it directly.
+GAME_FILES = ("dxvk.conf",)
 LICENSES = {
     "d3d8to9-LICENSE.md": SOURCE / "third_party/d3d8to9-1.15.1/LICENSE.md",
     "MinHook-LICENSE.txt": SOURCE / "third_party/minhook-1.3.4/LICENSE.txt",
@@ -37,9 +32,8 @@ def stage(win32_build: Path, root: Path) -> None:
     shutil.copy2(dawn / "README_DAWN.txt", root)
     for profile in dawn.glob("*.wxrprofile.json"):
         shutil.copy2(profile, root)
-    for name in QUEST_FILES:
+    for name in GAME_FILES:
         shutil.copy2(SOURCE / "quest/BF1942" / name, root)
-    shutil.copytree(SOURCE / "quest/Winlator", root / "Winlator")
 
     # No UserConfig.txt: BFVR starts from its defaults, and an update must
     # not overwrite the player's saved VR settings.

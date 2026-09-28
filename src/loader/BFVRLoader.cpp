@@ -12,6 +12,7 @@
 
 #include "Bf42PlusPlusCompatibility.h"
 #include "../BFVRVersion.h"
+#include "loader/WinlatorXrGameSetup.h"
 #include "winlatorxr/WinlatorXrClient.h"
 
 namespace
@@ -1431,6 +1432,27 @@ int wmain(int argc, wchar_t* argv[])
     if (options.playerLaunch && bfvr::winlatorxr::DetectWinlatorXrEnvironment())
     {
         AppendLoaderLog(L"WinlatorXR detected: the client presents side by side in-process; BFVRPresenter.exe is not started.");
+        // The game folder setup a WinlatorXR package needs (no batch files).
+        // The WinlatorXR desktop is the game's screen.
+        int screenWidth = GetSystemMetrics(SM_CXSCREEN);
+        int screenHeight = GetSystemMetrics(SM_CYSCREEN);
+        if (screenWidth < 640 || screenHeight < 480)
+        {
+            screenWidth = 1792;
+            screenHeight = 1624;
+        }
+        if (!bfvr::ApplyWinlatorXrGameSetup(
+                options.gameRoot,
+                payloadDirectory,
+                screenWidth,
+                screenHeight,
+                [](const wchar_t* message) {
+                    wprintf(L"%ls\n", message);
+                    AppendLoaderLog(message);
+                }))
+        {
+            return 2;
+        }
     }
     const std::wstring playerStartMessage =
         std::wstring(L"Starting BFVR ") + bfvr::kVersionString +

@@ -23,11 +23,15 @@ the v1.0.2 section exactly as written below.
   still use Enter. `BFVR_WINLATORXR_ENTER_FILTER=0` turns the filter off.
 - Quest: the downloads are now a WinlatorXR Dawn zip like the Crysis VR
   package and, for the cats builds, an `install.cmd` installer like the Far
-  Cry VR one. The Dawn zip: extract it into the game folder and import the container profile.
-  The first start of a launcher runs the Quest game setup; later starts keep
-  the game's `D3D8.dll` on the packaged translator. The zip has no
-  `UserConfig.txt`, so updates keep the player's VR settings. The launchers
-  no longer assume `D:\BF1942`.
+  Cry VR one. The Dawn zip holds only the mod files in the game folder
+  layout and the exported shortcut profiles, which start `BFVR\BFVR.exe`
+  directly (`--play -- +game XPack1`/`XPack2` for the expansions). Under
+  WinlatorXR, `BFVR.exe` sets the game folder up itself: BFVR's translator
+  as `D3D8.dll`, expansion intro clips off, software sound and Quest video
+  settings once, and the game's display mode matched to the WinlatorXR
+  screen on every start, so it cannot fall back to 640x480. HUD size 0.36
+  and a 110° field of view are now the WinlatorXR defaults. Updates keep the
+  player's VR settings. The cats launchers no longer assume `D:\BF1942`.
 - Quest: the launchers now use alternate-eye rendering
   (`BFVR_WINLATORXR_AER=1`) with a 1792x1624 WinlatorXR screen, one eye per
   frame, instead of side by side at 3120x1430.

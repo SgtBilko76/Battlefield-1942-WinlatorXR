@@ -23,7 +23,9 @@ constexpr DWORD kDxgiFormatB8G8R8A8Unorm = 87;
 constexpr DWORD kD3DFeatureLevel11_0 = 0xB000;
 constexpr ULONGLONG kStalePacketMs = 500;
 constexpr ULONGLONG kStaleFrameMs = 1000;
-constexpr float kDefaultHudScale = 0.70F;
+// Quest defaults (tested sharp and readable at 1792x1624 per eye).
+constexpr float kDefaultHudScale = 0.36F;
+constexpr float kDefaultFovDegrees = 110.0F;
 // Native menu UI drawn head-locked while a BFVR panel is open.
 constexpr float kMenuUnderOverlayUiScale = 0.80F;
 constexpr float kHudCanvasAspect = 4.0F / 3.0F;
@@ -56,16 +58,16 @@ bool ReadEyeSizeOverride(UINT& width, UINT& height)
     return true;
 }
 
-// Optional field of view override in degrees (BFVR_WINLATORXR_FOV, and
-// BFVR_WINLATORXR_FOV_V for a different vertical value). 0 keeps the
-// headset's native FOV reported by WinlatorXR.
-float ReadFovDegrees(const wchar_t* name)
+// Field of view override in degrees (BFVR_WINLATORXR_FOV, and
+// BFVR_WINLATORXR_FOV_V for a different vertical value); unset uses
+// fallback. 0 keeps the headset's native FOV reported by WinlatorXR.
+float ReadFovDegrees(const wchar_t* name, float fallback)
 {
     wchar_t value[16] = {};
     const DWORD length = GetEnvironmentVariableW(name, value, static_cast<DWORD>(std::size(value)));
     if (length == 0 || length >= std::size(value))
     {
-        return 0.0F;
+        return fallback;
     }
     const float parsed = std::wcstof(value, nullptr);
     return parsed >= 40.0F && parsed <= 150.0F ? parsed : 0.0F;
@@ -138,8 +140,8 @@ bool WinlatorXrPresentationCompanion::Start(
     log_ = log;
     StartWinlatorXrWatchdog(log);
     alternateEye_ = ReadAlternateEyeEnabled();
-    fovHorizontalOverride_ = ReadFovDegrees(L"BFVR_WINLATORXR_FOV");
-    fovVerticalOverride_ = ReadFovDegrees(L"BFVR_WINLATORXR_FOV_V");
+    fovHorizontalOverride_ = ReadFovDegrees(L"BFVR_WINLATORXR_FOV", kDefaultFovDegrees);
+    fovVerticalOverride_ = ReadFovDegrees(L"BFVR_WINLATORXR_FOV_V", 0.0F);
     if (fovVerticalOverride_ == 0.0F)
     {
         fovVerticalOverride_ = fovHorizontalOverride_;

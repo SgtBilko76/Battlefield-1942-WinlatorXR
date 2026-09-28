@@ -286,6 +286,18 @@ These are established behaviors, not cleanup opportunities.
   `FUN_004913a0` drops `c_PINextItem` (input 46). WinlatorXR itself
   toggles its 3DoF "immersive" screen on a left stick click while no game
   requests head tracking (native menus).
+- Player mode (`BFVR.exe` with no options, or `--play -- <game args>`) under
+  WinlatorXR runs `ApplyWinlatorXrGameSetup` (`src/loader/
+  WinlatorXrGameSetup.cpp`) before starting the game, so the Dawn package
+  needs no batch files: the translator becomes the game's `D3D8.dll` (dgVoodoo
+  crashes under Wine), a DXVK `d3d9.dll` is disabled, the expansions' intro
+  clips, software sound and Quest `Video.con` are applied once
+  (`BFVR\quest-setup.done`), and every `game.setGameDisplayMode` line in the
+  profiles and presets is set to the desktop size (`GetSystemMetrics`, the
+  WinlatorXR screen) on every start, because a mode that does not fit makes
+  BF1942 fall back to 640x480 and save it. The companion's WinlatorXR
+  defaults are HUD 0.36 and FOV 110 (env vars still override). The cats
+  installer keeps the `.bat` launchers and `Setup-BFVR-Quest.bat`.
 - WinlatorXR types keyboard keys for controller buttons, and a mapping that
   falls back to its defaults can type Enter, which opens BF1942's spawn
   screen (Enter is hard-wired, not in the control `.con` files). The
