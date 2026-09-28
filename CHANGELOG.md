@@ -18,11 +18,12 @@ the v1.0.2 section exactly as written below.
   there. The Quest controllers use the same button layout as PC VR, except
   that the left stick click toggles the map (WinlatorXR keeps the menu
   button). The Windows PC version is unchanged.
-- Quest: the download is now an installer package like the Far Cry VR mod's.
-  `install.cmd` runs inside the WinlatorXR container, copies BFVR into the
-  game folder (keeping an existing `UserConfig.txt`), applies the Quest game
-  settings and adds the three shortcuts. The launchers no longer assume
-  `D:\BF1942`.
+- Quest: the download is now a WinlatorXR Dawn zip like the Crysis VR
+  package: extract it into the game folder and import the container profile.
+  The first start of a launcher runs the Quest game setup; later starts keep
+  the game's `D3D8.dll` on the packaged translator. The zip has no
+  `UserConfig.txt`, so updates keep the player's VR settings. The launchers
+  no longer assume `D:\BF1942`.
 - Quest: the launchers now use alternate-eye rendering
   (`BFVR_WINLATORXR_AER=1`) with a 1792x1624 WinlatorXR screen, one eye per
   frame, instead of side by side at 3120x1430.

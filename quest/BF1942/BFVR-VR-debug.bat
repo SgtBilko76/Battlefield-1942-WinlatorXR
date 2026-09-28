@@ -1,4 +1,7 @@
 @echo off
+rem First start: one-time Quest setup. Later starts keep the game's D3D8.dll
+rem on the BFVR translator from this package (it changes with updates).
+if exist "%~dp0BFVR\quest-setup.done" (copy /Y "%~dp0BFVR\BFVRD3D8To9.dll" "%~dp0D3D8.dll" >nul) else call "%~dp0Setup-BFVR-Quest.bat"
 cd /d "%~dp0BFVR"
 set BFVR_DIAGNOSTICS=normal
 rem WinlatorXR options: HUD size per eye (0.3-1.0), alternate-eye rendering (1 on, 0 side by side)

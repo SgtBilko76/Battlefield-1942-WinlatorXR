@@ -1,7 +1,8 @@
 @echo off
-rem BFVR Quest Beta: one-time setup of a MoonGamers Battlefield 1942 folder
-rem for WinlatorXR. Run it inside the WinlatorXR container from the game
-rem folder (D:\BF1942). Every changed file is backed up once as *.bfvr-backup.
+rem BFVR Quest: one-time setup of a MoonGamers Battlefield 1942 folder for
+rem WinlatorXR. The BFVR launchers run it on their first start; it can also
+rem be run by hand inside the container from the game folder (D:\BF1942).
+rem Every changed file is backed up once as *.bfvr-backup.
 rem The resolution below must match the container's screen size.
 setlocal EnableExtensions
 set SCREEN_W=1792
@@ -30,6 +31,9 @@ call :appendsetting %SETTINGS%\VideoDefault.con "renderer.globalLodRadiusScaleFa
 
 for %%P in (Custom Default) do call :profile %SETTINGS%\Profiles\%%P
 for %%F in (%SETTINGS%\Default\Video*.con) do call :appendsetting "%%F" "game.setGameDisplayMode %SCREEN_W% %SCREEN_H% 32 60"
+
+rem The launchers run this setup once, until this marker exists.
+> BFVR\quest-setup.done echo %DATE% %TIME%
 
 echo.
 echo Done. Start BFVR-VR.bat, BFVR-VR-RoadToRome.bat or BFVR-VR-SecretWeapons.bat

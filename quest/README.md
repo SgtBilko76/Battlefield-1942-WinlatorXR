@@ -1,24 +1,23 @@
 # Quest package files
 
-Source of the non-binary files in the BFVR Quest installer package. See
-[docs/QUEST_BETA.md](../docs/QUEST_BETA.md) for how they are used.
+Source of the non-binary files in the BFVR Quest package for WinlatorXR Dawn.
+See [docs/QUEST_BETA.md](../docs/QUEST_BETA.md) for how they are used.
 
-`tools/stage_quest_installer.py` assembles the package from a Win32 build:
+`tools/stage_quest_dawn.py` assembles the zip from a Win32 build. It is
+extracted into the Battlefield 1942 folder, so the files sit at the top:
 
 ```
-BFVR-Quest-Installer-Beta<N>/
-  install.cmd                quest/Installer/install.cmd
-  README_INSTALL.txt         quest/Installer/README_INSTALL.txt
-  README-QUEST.md            docs/QUEST_BETA.md
-  files/UserConfig.txt       written by BFVRUserSettingsSeedWriter (copied
-                             only when the player has none)
-  files/BF1942/              quest/BF1942/* except Install-BFVR-Shortcut.bat
-  files/BF1942/BFVR/         BFVR.exe, BFVRClient.dll, BFVRD3D8To9.dll (Win32
+README_DAWN.txt              quest/Dawn/README_DAWN.txt
+*.wxrprofile.json            quest/Dawn/ (container profile for Dawn's import)
+*.bat, dxvk.conf             quest/BF1942/*
+Winlator/*.desktop           quest/Winlator/* (Install-BFVR-Shortcut.bat
+                             copies them to the container desktop)
+BFVR/                        BFVR.exe, BFVRClient.dll, BFVRD3D8To9.dll (Win32
                              build), assets/, THIRD_PARTY_NOTICES.md,
                              licenses/ (d3d8to9, MinHook)
 ```
 
-`install.cmd` writes the WinlatorXR shortcuts itself; `quest/Winlator/` and
-`Install-BFVR-Shortcut.bat` remain for manual installs. The `.bat` and `.cmd`
-files use CRLF line endings; Wine's `cmd` needs them, and it does not accept
-`echo(` (use `echo.`).
+There is no `UserConfig.txt`: BFVR starts from its defaults and an update
+must not overwrite the player's settings. The `.bat` files use CRLF line
+endings; Wine's `cmd` needs them, and it does not accept `echo(` (use
+`echo.`).

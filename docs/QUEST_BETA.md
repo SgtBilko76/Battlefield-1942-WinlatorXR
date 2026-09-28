@@ -15,9 +15,9 @@ left stick click as the map button.
 
 ### Updating from Beta 2
 
-Set the container's **Screen size to 1792x1624**, then run the new
-`install.cmd` as in step 4 below. Your VR settings are kept. The old
-`Download/Winlator/BFVR-VR*.desktop` files are no longer used.
+Set the container's **Screen size to 1792x1624** (or import the profile from
+the zip), then extract the zip over `Download/BF1942` and run
+`Install-BFVR-Shortcut.bat` once more. Your VR settings are kept.
 
 ## Requirements
 
@@ -29,55 +29,57 @@ Set the container's **Screen size to 1792x1624**, then run the new
 
 ## Install
 
-The download is an installer folder, like the Far Cry VR mod's:
-`install.cmd` runs inside the container and does everything except the
-WinlatorXR settings. `README_INSTALL.txt` in the zip has the same steps.
+The download is a zip for **WinlatorXR Dawn**, like the Crysis VR package:
+extract it into the game folder and import the container profile it
+contains. `README_DAWN.txt` in the zip has the same steps.
 
 1. Install the MoonGamers package on a PC and copy its complete
    `Battlefield 1942` folder to the headset as `Download/BF1942`
    (so `BF1942.exe` is at `Download/BF1942/BF1942.exe`).
-2. In WinlatorXR create a container (these settings were tested):
+2. Extract everything from the zip into `Download/BF1942` (this adds
+   `BFVR/`, the `.bat` files, `Winlator/` and `dxvk.conf`).
+3. In WinlatorXR create a container with drive `D:` = `/sdcard/Download`,
+   copy the zip's `.wxrprofile.json` to `Download/Winlator/WxrProfiles/` and
+   import it in the container settings. It sets the tested settings:
    - Screen size **1792x1624** (one eye; the launchers use alternate-eye
      rendering, so each frame draws one eye into the whole window).
-   - Drive `D:` = `/sdcard/Download`.
    - Wine `proton-9.0-x86_64`, Box64.
    - DX wrapper **DXVK 1.10.x** with **Async** on. Newer DXVK versions of the
      Direct3D 8 wrapper fail on the Quest; BFVR only needs DXVK's Direct3D 9.
-   - XR controller mapping: give every button a key Battlefield 1942 does not
-     use. `KEY_NONE` does not stay saved (WinlatorXR restores its defaults A,
-     B, X, Y, Space, Enter and the arrow keys, which the game would receive in
-     addition to BFVR's controls). Tested mapping:
-     Button A `KEY_KP_7`, Button B `KEY_KP_9`, Button X `KEY_KP_1`,
-     Button Y `KEY_KP_3`, Grip `KEY_KP_5`, Trigger `KEY_KP_DIVIDE`,
-     Thumbstick up/down/left/right `KEY_KP_MULTIPLY`/`KEY_KP_SUBTRACT`/
-     `KEY_KP_ADD`/`KEY_SCROLL_LOCK`.
-   - Keep "Use XR controller as mouse" on (menus use it; BFVR blocks it in
-     gameplay).
-   - In WinlatorXR's XR settings set the CPU level to the highest value.
-3. Copy the zip's `BFVR-Quest-Installer-Beta3` folder to `Download` (for
-   example as `Download/BFVR-Setup`).
-4. Start the container and run `D:\BFVR-Setup\install.cmd` from the file
-   manager. Accept `D:\BF1942` (or type your folder, without spaces) and the
-   container number WinlatorXR shows (default 3). The installer:
-   - copies `BFVR\`, the launchers and `dxvk.conf` into the game folder
-     (an existing `BFVR\UserConfig.txt` is kept);
-   - runs `Setup-BFVR-Quest.bat`, which backs up every file it changes
-     (`*.bfvr-backup`), installs BFVR's Direct3D 8 translator as the game's
-     `D3D8.dll`, disables the intro movies (including the expansions' intro
-     and legal clips, black under WinlatorXR), switches to software sound
-     (hardware sound crashes the game there) and sets 1792x1624, texture
-     quality 3, 60% view distance and normal object detail distance;
-   - adds the shortcuts **BFVR-VR**, **BFVR-VR-RoadToRome** and
-     **BFVR-VR-SecretWeapons** to WinlatorXR's Shortcuts tab.
-   Keep detail textures on: turning them off crashes map loading on the
-   Quest.
+4. XR controller mapping: give every button a key Battlefield 1942 does not
+   use. `KEY_NONE` does not stay saved (WinlatorXR restores its defaults A,
+   B, X, Y, Space, Enter and the arrow keys, which the game would receive in
+   addition to BFVR's controls). Tested mapping:
+   Button A `KEY_KP_7`, Button B `KEY_KP_9`, Button X `KEY_KP_1`,
+   Button Y `KEY_KP_3`, Grip `KEY_KP_5`, Trigger `KEY_KP_DIVIDE`,
+   Thumbstick up/down/left/right `KEY_KP_MULTIPLY`/`KEY_KP_SUBTRACT`/
+   `KEY_KP_ADD`/`KEY_SCROLL_LOCK`. Keep "Use XR controller as mouse" on
+   (menus use it; BFVR blocks it in gameplay) and set the CPU level to the
+   highest value in WinlatorXR's XR settings.
+5. Start the container and run `D:\BF1942\Install-BFVR-Shortcut.bat` once;
+   WinlatorXR's Shortcuts tab then shows **BFVR-VR**,
+   **BFVR-VR-RoadToRome** and **BFVR-VR-SecretWeapons**. The shortcuts
+   expect container 3; edit `container_id` in `BF1942/Winlator/*.desktop`
+   first otherwise.
+6. The first start of any BFVR launcher runs `Setup-BFVR-Quest.bat`, which
+   backs up every file it changes (`*.bfvr-backup`) and:
+   - installs BFVR's Direct3D 8 translator as the game's `D3D8.dll` (later
+     starts keep it on the translator from the current package);
+   - disables the intro movies, including the expansions' intro and legal
+     clips (black under WinlatorXR);
+   - switches to software sound (hardware sound crashes the game there);
+   - sets 1792x1624, texture quality 3, 60% view distance and normal object
+     detail distance.
+   It then leaves `BFVR\quest-setup.done`; delete that file to run the setup
+   again. Keep detail textures on: turning them off crashes map loading on
+   the Quest.
 
 If you use another screen size, change `SCREEN_W`/`SCREEN_H` in
 `Setup-BFVR-Quest.bat` and `screenSize` in the shortcuts to match, and set
 the container to the same size: a `.bat` started from the file manager uses
 the container's size, and if the game's resolution does not fit, BF1942
-falls back to 640x480 and saves that to its profile (run
-`Setup-BFVR-Quest.bat` again to restore it).
+falls back to 640x480 and saves that to its profile (delete
+`BFVR\quest-setup.done` and start again to restore it).
 
 ## Play
 
