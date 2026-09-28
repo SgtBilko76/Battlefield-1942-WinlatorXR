@@ -21,8 +21,9 @@ the v1.0.2 section exactly as written below.
 - Quest: an Enter that WinlatorXR types for a controller button no longer
   opens the spawn screen during gameplay; menus and the Quick Menu's Deploy
   still use Enter. `BFVR_WINLATORXR_ENTER_FILTER=0` turns the filter off.
-- Quest: the download is now a WinlatorXR Dawn zip like the Crysis VR
-  package: extract it into the game folder and import the container profile.
+- Quest: the downloads are now a WinlatorXR Dawn zip like the Crysis VR
+  package and, for the cats builds, an `install.cmd` installer like the Far
+  Cry VR one. The Dawn zip: extract it into the game folder and import the container profile.
   The first start of a launcher runs the Quest game setup; later starts keep
   the game's `D3D8.dll` on the packaged translator. The zip has no
   `UserConfig.txt`, so updates keep the player's VR settings. The launchers

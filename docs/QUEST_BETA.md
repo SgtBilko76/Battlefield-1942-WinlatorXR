@@ -29,9 +29,17 @@ the zip), then extract the zip over `Download/BF1942` and run
 
 ## Install
 
-The download is a zip for **WinlatorXR Dawn**, like the Crysis VR package:
-extract it into the game folder and import the container profile it
-contains. `README_DAWN.txt` in the zip has the same steps.
+The release has two downloads with the same BFVR build:
+
+- `BFVR-Quest-Dawn-Beta3.zip` for **WinlatorXR Dawn**, like the Crysis VR
+  package: extract it into the game folder and import the container
+  profiles it contains. `README_DAWN.txt` in the zip has the same steps.
+  The steps below follow this package.
+- `BFVR-Quest-Installer-Beta3.zip` for the **cats** builds (cats-27), like
+  the Far Cry VR installer: copy its folder to `Download`, set the container
+  up by hand and run `install.cmd` inside the container. It copies BFVR,
+  runs `Setup-BFVR-Quest.bat` and adds the shortcuts for the folder and
+  container number you enter. `README_INSTALL.txt` has the steps.
 
 1. Install the MoonGamers package on a PC and copy its complete
    `Battlefield 1942` folder to the headset as `Download/BF1942`

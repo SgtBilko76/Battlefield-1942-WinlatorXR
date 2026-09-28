@@ -17,7 +17,12 @@ BFVR/                        BFVR.exe, BFVRClient.dll, BFVRD3D8To9.dll (Win32
                              licenses/ (d3d8to9, MinHook)
 ```
 
-There is no `UserConfig.txt`: BFVR starts from its defaults and an update
+`tools/stage_quest_installer.py` builds the second download, the installer
+for the WinlatorXR cats builds (`quest/Installer/install.cmd` and
+`README_INSTALL.txt`, with the same BFVR files under `files/` plus a seeded
+`files/UserConfig.txt` that is copied only when the player has none).
+
+The Dawn zip has no `UserConfig.txt`: BFVR starts from its defaults and an update
 must not overwrite the player's settings. The `.bat` files use CRLF line
 endings; Wine's `cmd` needs them, and it does not accept `echo(` (use
 `echo.`).
