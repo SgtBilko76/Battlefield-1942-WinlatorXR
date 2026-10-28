@@ -1,5 +1,7 @@
 # BFVR
 
+**Download, install guide, controls and pictures: [portroyale.online/bf1942.html](https://portroyale.online/bf1942.html)**
+
 [![Sponsor](https://img.shields.io/badge/Sponsor-SgtBilko76-ea4aaa?logo=githubsponsors&logoColor=white)](https://github.com/sponsors/SgtBilko76)
 
 
