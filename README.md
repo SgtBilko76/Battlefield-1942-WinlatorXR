@@ -83,6 +83,10 @@ known issues.
 You need your own Battlefield 1942 from the MoonGamers "BF1942 & Expansions"
 package (dgVoodoo version); no game files are included.
 
+### Controls
+
+![BFVR: Battlefield 1942 VR controller mapping](docs/controls.webp)
+
 ## Important safety information
 
 BFVR loads its own DLL into the Battlefield 1942 process. That is how this mod
